@@ -1,6 +1,10 @@
 package com.zephyrus.app.ui.forecast
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,18 +17,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,8 +43,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zephyrus.app.domain.model.ClockFormat
 import com.zephyrus.app.domain.model.DailyForecast
+import com.zephyrus.app.domain.model.HourlyForecast
 import com.zephyrus.app.domain.model.TemperatureUnit
+import com.zephyrus.app.ui.components.HourlyForecastRow
 import com.zephyrus.app.ui.components.ZephyrusTopAppBar
 import com.zephyrus.app.ui.theme.TempBlue
 import com.zephyrus.app.ui.theme.TempDeepBlue
@@ -103,14 +114,28 @@ fun ForecastScreen(
                 val forecasts = uiState.dailyForecast
                 val overallMin = forecasts.minOfOrNull { it.temperatureMin } ?: 0.0
                 val overallMax = forecasts.maxOfOrNull { it.temperatureMax } ?: 100.0
+                // -1 means no card expanded
+                var expandedIndex by rememberSaveable { mutableIntStateOf(-1) }
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
                 ) {
-                    items(forecasts) { day ->
-                        DailyForecastCard(day, uiState.temperatureUnit, overallMin, overallMax)
+                    itemsIndexed(forecasts) { index, day ->
+                        val hourlyData = uiState.hourlyByDate[day.date] ?: emptyList()
+                        DailyForecastCard(
+                            day = day,
+                            unit = uiState.temperatureUnit,
+                            overallMin = overallMin,
+                            overallMax = overallMax,
+                            isExpanded = expandedIndex == index,
+                            hourlyData = hourlyData,
+                            clockFormat = uiState.clockFormat,
+                            onClick = {
+                                expandedIndex = if (expandedIndex == index) -1 else index
+                            },
+                        )
                     }
                 }
             }
@@ -140,8 +165,16 @@ private fun DailyForecastCard(
     unit: TemperatureUnit,
     overallMin: Double,
     overallMax: Double,
+    isExpanded: Boolean,
+    hourlyData: List<HourlyForecast>,
+    clockFormat: ClockFormat,
+    onClick: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -198,6 +231,26 @@ private fun DailyForecastCard(
                 overallMax = overallMax,
                 unit = unit,
             )
+
+            // Expandable hourly forecast
+            AnimatedVisibility(
+                visible = isExpanded && hourlyData.isNotEmpty(),
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Hourly Forecast",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                    HourlyForecastRow(hourlyData, unit, clockFormat)
+                }
+            }
         }
     }
 }

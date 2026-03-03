@@ -25,13 +25,18 @@ class ForecastViewModel @Inject constructor(
 
     init {
         Timber.d("ForecastViewModel initialized")
-        observeTemperatureUnit()
+        observePreferences()
     }
 
-    private fun observeTemperatureUnit() {
+    private fun observePreferences() {
         viewModelScope.launch {
             userPreferences.temperatureUnit.collect { unit ->
                 _uiState.update { it.copy(temperatureUnit = unit) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferences.clockFormat.collect { format ->
+                _uiState.update { it.copy(clockFormat = format) }
             }
         }
     }
@@ -40,9 +45,16 @@ class ForecastViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             val unit = userPreferences.temperatureUnit.first()
-            weatherRepository.getDailyForecast(latitude, longitude, unit)
-                .onSuccess { forecast ->
-                    _uiState.update { it.copy(dailyForecast = forecast, isLoading = false) }
+            weatherRepository.getDailyWithHourlyForecast(latitude, longitude, unit)
+                .onSuccess { (daily, hourly) ->
+                    val hourlyByDate = hourly.groupBy { it.time.substringBefore("T") }
+                    _uiState.update {
+                        it.copy(
+                            dailyForecast = daily,
+                            hourlyByDate = hourlyByDate,
+                            isLoading = false,
+                        )
+                    }
                 }
                 .onFailure { e ->
                     Timber.e(e, "Failed to load forecast")

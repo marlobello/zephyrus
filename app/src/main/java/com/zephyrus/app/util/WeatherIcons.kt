@@ -3,13 +3,14 @@ package com.zephyrus.app.util
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FilterDrama
 import androidx.compose.material.icons.filled.Grain
+import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Thunderstorm
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.WbCloudy
 import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material.icons.filled.WbTwilight
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.zephyrus.app.domain.model.WeatherCondition
 
@@ -17,9 +18,9 @@ object WeatherIcons {
 
     fun forCondition(condition: WeatherCondition, isDay: Boolean = true): ImageVector {
         return when (condition) {
-            WeatherCondition.CLEAR_SKY -> if (isDay) Icons.Filled.WbSunny else Icons.Filled.WbTwilight
-            WeatherCondition.MAINLY_CLEAR -> if (isDay) Icons.Filled.WbSunny else Icons.Filled.WbTwilight
-            WeatherCondition.PARTLY_CLOUDY -> Icons.Filled.FilterDrama
+            WeatherCondition.CLEAR_SKY -> if (isDay) Icons.Filled.WbSunny else Icons.Filled.DarkMode
+            WeatherCondition.MAINLY_CLEAR -> if (isDay) Icons.Filled.WbSunny else Icons.Filled.DarkMode
+            WeatherCondition.PARTLY_CLOUDY -> if (isDay) Icons.Filled.FilterDrama else Icons.Filled.NightsStay
             WeatherCondition.OVERCAST -> Icons.Filled.Cloud
             WeatherCondition.FOG,
             WeatherCondition.DEPOSITING_RIME_FOG -> Icons.Filled.WbCloudy

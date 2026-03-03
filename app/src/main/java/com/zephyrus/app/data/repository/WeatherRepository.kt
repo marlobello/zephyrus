@@ -79,4 +79,24 @@ class WeatherRepository @Inject constructor(
 
         response.daily?.toDailyForecasts() ?: emptyList()
     }.onFailure { Timber.e(it, "Failed to fetch daily forecast") }
+
+    suspend fun getDailyWithHourlyForecast(
+        latitude: Double,
+        longitude: Double,
+        unit: TemperatureUnit,
+    ): Result<Pair<List<DailyForecast>, List<HourlyForecast>>> = runCatching {
+        Timber.d("Fetching 10-day forecast with hourly for (%.4f, %.4f)", latitude, longitude)
+        val tempUnit = if (unit == TemperatureUnit.CELSIUS) "celsius" else "fahrenheit"
+
+        val response = weatherApi.getCurrentAndForecast(
+            latitude = latitude,
+            longitude = longitude,
+            temperatureUnit = tempUnit,
+            forecastDays = 10,
+        )
+
+        val daily = response.daily?.toDailyForecasts() ?: emptyList()
+        val hourly = response.hourly?.toHourlyForecasts() ?: emptyList()
+        Pair(daily, hourly)
+    }.onFailure { Timber.e(it, "Failed to fetch forecast with hourly") }
 }

@@ -40,9 +40,6 @@ fun ZephyrusTopAppBar(
             }
         },
         actions = {
-            IconButton(onClick = onRefreshClick) {
-                Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
-            }
             Box {
                 var menuExpanded by remember { mutableStateOf(false) }
                 IconButton(onClick = { menuExpanded = true }) {
@@ -57,6 +54,13 @@ fun ZephyrusTopAppBar(
                         onClick = {
                             menuExpanded = false
                             onSearchClick()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Refresh") },
+                        onClick = {
+                            menuExpanded = false
+                            onRefreshClick()
                         },
                     )
                     DropdownMenuItem(
