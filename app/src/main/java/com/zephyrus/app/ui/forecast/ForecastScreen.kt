@@ -29,6 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -36,6 +38,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zephyrus.app.domain.model.DailyForecast
 import com.zephyrus.app.domain.model.TemperatureUnit
 import com.zephyrus.app.ui.components.ZephyrusTopAppBar
+import com.zephyrus.app.ui.theme.TempBlue
+import com.zephyrus.app.ui.theme.TempDeepBlue
+import com.zephyrus.app.ui.theme.TempDeepRed
+import com.zephyrus.app.ui.theme.TempLightBlue
+import com.zephyrus.app.ui.theme.TempLightRed
+import com.zephyrus.app.ui.theme.TempRed
+import com.zephyrus.app.ui.theme.TempWhite
 import com.zephyrus.app.util.WeatherIcons
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -193,6 +202,36 @@ private fun DailyForecastCard(
     }
 }
 
+// Temperature color stops: (°F threshold, color)
+private val tempColorStops = listOf(
+    0f to TempDeepBlue,
+    20f to TempBlue,
+    40f to TempLightBlue,
+    60f to TempWhite,
+    75f to TempLightRed,
+    90f to TempRed,
+    105f to TempDeepRed,
+)
+
+private fun temperatureToColor(tempF: Float): Color {
+    if (tempF <= tempColorStops.first().first) return tempColorStops.first().second
+    if (tempF >= tempColorStops.last().first) return tempColorStops.last().second
+    for (i in 0 until tempColorStops.size - 1) {
+        val (lowTemp, lowColor) = tempColorStops[i]
+        val (highTemp, highColor) = tempColorStops[i + 1]
+        if (tempF in lowTemp..highTemp) {
+            val fraction = ((tempF - lowTemp) / (highTemp - lowTemp)).coerceIn(0f, 1f)
+            return lerp(lowColor, highColor, fraction)
+        }
+    }
+    return tempColorStops.last().second
+}
+
+private fun toFahrenheit(temp: Double, unit: TemperatureUnit): Float = when (unit) {
+    TemperatureUnit.FAHRENHEIT -> temp.toFloat()
+    TemperatureUnit.CELSIUS -> (temp * 9.0 / 5.0 + 32.0).toFloat()
+}
+
 @Composable
 private fun TemperatureRangeBar(
     low: Double,
@@ -206,8 +245,10 @@ private fun TemperatureRangeBar(
     val endFraction = ((high - overallMin) / totalRange).toFloat().coerceIn(0f, 1f)
     val barFraction = (endFraction - startFraction).coerceAtLeast(0.02f)
 
-    val coolColor = MaterialTheme.colorScheme.primary
-    val warmColor = MaterialTheme.colorScheme.error
+    val lowColorF = toFahrenheit(low, unit)
+    val highColorF = toFahrenheit(high, unit)
+    val startColor = temperatureToColor(lowColorF)
+    val endColor = temperatureToColor(highColorF)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -230,21 +271,18 @@ private fun TemperatureRangeBar(
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
-                // Empty space before the bar
                 if (startFraction > 0f) {
                     Spacer(modifier = Modifier.weight(startFraction))
                 }
-                // The gradient temperature bar
                 Box(
                     modifier = Modifier
                         .weight(barFraction)
                         .height(10.dp)
                         .clip(RoundedCornerShape(5.dp))
                         .background(
-                            Brush.horizontalGradient(listOf(coolColor, warmColor)),
+                            Brush.horizontalGradient(listOf(startColor, endColor)),
                         ),
                 )
-                // Empty space after the bar
                 val endSpace = 1f - endFraction
                 if (endSpace > 0f) {
                     Spacer(modifier = Modifier.weight(endSpace))

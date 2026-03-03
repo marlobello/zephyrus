@@ -23,6 +23,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zephyrus.app.domain.model.ClockFormat
 import com.zephyrus.app.domain.model.TemperatureUnit
+import com.zephyrus.app.domain.model.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,6 +94,31 @@ fun SettingsScreen(
                     ),
                 ) {
                     Text(format.label())
+                }
+            }
+        }
+
+        // Theme Mode
+        Text(
+            text = "Theme",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp),
+        )
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+        ) {
+            ThemeMode.entries.forEachIndexed { index, mode ->
+                SegmentedButton(
+                    selected = uiState.themeMode == mode,
+                    onClick = { viewModel.setThemeMode(mode) },
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = ThemeMode.entries.size,
+                    ),
+                ) {
+                    Text(mode.label())
                 }
             }
         }

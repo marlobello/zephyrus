@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.zephyrus.app.data.local.UserPreferences
 import com.zephyrus.app.domain.model.ClockFormat
 import com.zephyrus.app.domain.model.TemperatureUnit
+import com.zephyrus.app.domain.model.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,7 @@ import javax.inject.Inject
 data class SettingsUiState(
     val temperatureUnit: TemperatureUnit = TemperatureUnit.FAHRENHEIT,
     val clockFormat: ClockFormat = ClockFormat.TWELVE_HOUR,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
 )
 
 @HiltViewModel
@@ -32,8 +34,9 @@ class SettingsViewModel @Inject constructor(
             combine(
                 userPreferences.temperatureUnit,
                 userPreferences.clockFormat,
-            ) { tempUnit, clockFmt ->
-                SettingsUiState(temperatureUnit = tempUnit, clockFormat = clockFmt)
+                userPreferences.themeMode,
+            ) { tempUnit, clockFmt, theme ->
+                SettingsUiState(temperatureUnit = tempUnit, clockFormat = clockFmt, themeMode = theme)
             }.collect { state ->
                 _uiState.value = state
             }
@@ -51,6 +54,13 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             Timber.d("Setting clock format to %s", format)
             userPreferences.setClockFormat(format)
+        }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch {
+            Timber.d("Setting theme mode to %s", mode)
+            userPreferences.setThemeMode(mode)
         }
     }
 }

@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.zephyrus.app.domain.model.ClockFormat
 import com.zephyrus.app.domain.model.TemperatureUnit
+import com.zephyrus.app.domain.model.ThemeMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -23,6 +24,7 @@ class UserPreferences @Inject constructor(
 ) {
     private val temperatureUnitKey = stringPreferencesKey("temperature_unit")
     private val clockFormatKey = stringPreferencesKey("clock_format")
+    private val themeModeKey = stringPreferencesKey("theme_mode")
 
     val temperatureUnit: Flow<TemperatureUnit> = context.dataStore.data.map { prefs ->
         val value = prefs[temperatureUnitKey] ?: TemperatureUnit.FAHRENHEIT.name
@@ -55,6 +57,23 @@ class UserPreferences @Inject constructor(
         Timber.d("Setting clock format to %s", format)
         context.dataStore.edit { prefs ->
             prefs[clockFormatKey] = format.name
+        }
+    }
+
+    val themeMode: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
+        val value = prefs[themeModeKey] ?: ThemeMode.SYSTEM.name
+        try {
+            ThemeMode.valueOf(value)
+        } catch (_: IllegalArgumentException) {
+            Timber.w("Invalid theme mode preference: %s, falling back to SYSTEM", value)
+            ThemeMode.SYSTEM
+        }
+    }
+
+    suspend fun setThemeMode(mode: ThemeMode) {
+        Timber.d("Setting theme mode to %s", mode)
+        context.dataStore.edit { prefs ->
+            prefs[themeModeKey] = mode.name
         }
     }
 }
