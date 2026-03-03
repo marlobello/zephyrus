@@ -12,17 +12,27 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.zephyrus.app.ui.components.ZephyrusTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapsScreen() {
+fun MapsScreen(
+    locationName: String = "Zephyrus",
+    onSearchClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
+) {
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("Maps") })
+        ZephyrusTopAppBar(
+            locationName = locationName,
+            subtitle = "Maps",
+            onRefreshClick = { /* No-op for now */ },
+            onSearchClick = onSearchClick,
+            onSettingsClick = onSettingsClick,
+        )
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,

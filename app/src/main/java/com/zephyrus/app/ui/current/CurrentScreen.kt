@@ -20,20 +20,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +47,7 @@ import com.zephyrus.app.domain.model.CurrentWeather
 import com.zephyrus.app.domain.model.HourlyForecast
 import com.zephyrus.app.domain.model.Location
 import com.zephyrus.app.domain.model.TemperatureUnit
+import com.zephyrus.app.ui.components.ZephyrusTopAppBar
 import com.zephyrus.app.util.WeatherIcons
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -62,7 +57,7 @@ import java.time.format.DateTimeFormatter
 fun CurrentScreen(
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    onLocationResolved: (Double, Double) -> Unit = { _, _ -> },
+    onLocationResolved: (Double, Double, String) -> Unit = { _, _, _ -> },
     pendingSearchLocation: Location? = null,
     onSearchLocationConsumed: () -> Unit = {},
     pendingUseDeviceLocation: Boolean = false,
@@ -107,49 +102,20 @@ fun CurrentScreen(
     // Push active location up to parent for sharing with other tabs
     LaunchedEffect(uiState.location) {
         uiState.location?.let { loc ->
-            onLocationResolved(loc.latitude, loc.longitude)
+            val displayName = if (loc.admin1.isNotEmpty()) "${loc.name}, ${loc.admin1}" else loc.name
+            onLocationResolved(loc.latitude, loc.longitude, displayName)
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = {
-                Text(
-                    text = uiState.location?.let { loc ->
-                        if (loc.admin1.isNotEmpty()) "${loc.name}, ${loc.admin1}" else loc.name
-                    } ?: "Zephyrus",
-                )
-            },
-            actions = {
-                IconButton(onClick = { viewModel.refresh() }) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
-                }
-                Box {
-                    var menuExpanded by remember { mutableStateOf(false) }
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "More options")
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Search Location") },
-                            onClick = {
-                                menuExpanded = false
-                                onSearchClick()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Settings") },
-                            onClick = {
-                                menuExpanded = false
-                                onSettingsClick()
-                            },
-                        )
-                    }
-                }
-            },
+        ZephyrusTopAppBar(
+            locationName = uiState.location?.let { loc ->
+                if (loc.admin1.isNotEmpty()) "${loc.name}, ${loc.admin1}" else loc.name
+            } ?: "Zephyrus",
+            subtitle = "Current Conditions",
+            onRefreshClick = { viewModel.refresh() },
+            onSearchClick = onSearchClick,
+            onSettingsClick = onSettingsClick,
         )
 
         when {

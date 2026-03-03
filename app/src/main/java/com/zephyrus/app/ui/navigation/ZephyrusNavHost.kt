@@ -38,6 +38,7 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
     // Shared location state across tabs
     var activeLatitude by rememberSaveable { mutableDoubleStateOf(0.0) }
     var activeLongitude by rememberSaveable { mutableDoubleStateOf(0.0) }
+    var activeLocationName by rememberSaveable { mutableStateOf("Zephyrus") }
 
     // Location selected from search — consumed by CurrentScreen
     var pendingSearchLocation by mutableStateOf<Location?>(null)
@@ -84,9 +85,10 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
                     onSettingsClick = {
                         navController.navigate(SETTINGS_ROUTE)
                     },
-                    onLocationResolved = { lat, lon ->
+                    onLocationResolved = { lat, lon, name ->
                         activeLatitude = lat
                         activeLongitude = lon
+                        activeLocationName = name
                     },
                     pendingSearchLocation = pendingSearchLocation,
                     onSearchLocationConsumed = { pendingSearchLocation = null },
@@ -98,9 +100,18 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
                 ForecastScreen(
                     latitude = activeLatitude,
                     longitude = activeLongitude,
+                    locationName = activeLocationName,
+                    onSearchClick = { navController.navigate(SEARCH_ROUTE) },
+                    onSettingsClick = { navController.navigate(SETTINGS_ROUTE) },
                 )
             }
-            composable(ZephyrusScreen.Maps.route) { MapsScreen() }
+            composable(ZephyrusScreen.Maps.route) {
+                MapsScreen(
+                    locationName = activeLocationName,
+                    onSearchClick = { navController.navigate(SEARCH_ROUTE) },
+                    onSettingsClick = { navController.navigate(SETTINGS_ROUTE) },
+                )
+            }
             composable(SEARCH_ROUTE) {
                 SearchScreen(
                     onLocationSelected = { location ->
