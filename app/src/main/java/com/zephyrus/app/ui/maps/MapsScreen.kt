@@ -226,6 +226,10 @@ fun MapsScreen(
                         shape = SegmentedButtonDefaults.itemShape(index, MapLayer.entries.size),
                         onClick = { viewModel.setActiveLayer(layer) },
                         selected = uiState.activeLayer == layer,
+                        colors = SegmentedButtonDefaults.colors(
+                            inactiveContainerColor = MaterialTheme.colorScheme.surface,
+                            inactiveContentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
                         icon = {
                             Icon(
                                 imageVector = layer.icon,
