@@ -104,6 +104,23 @@ fun AboutScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
+                text = "Radar Data",
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = "Powered by RainViewer",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(onClick = {
+                context.startActivity(Intent(Intent.ACTION_VIEW, "https://www.rainviewer.com/".toUri()))
+            }) {
+                Text("rainviewer.com")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
                 text = "Map Tiles",
                 style = MaterialTheme.typography.titleSmall,
             )

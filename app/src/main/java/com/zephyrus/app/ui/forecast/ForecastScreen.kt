@@ -27,6 +27,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -83,12 +84,12 @@ fun ForecastScreen(
         )
 
         when {
-            uiState.isLoading -> {
+            uiState.isLoading && uiState.dailyForecast.isEmpty() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             }
-            uiState.error != null -> {
+            uiState.error != null && uiState.dailyForecast.isEmpty() -> {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -106,18 +107,40 @@ fun ForecastScreen(
                 }
             }
             else -> {
-                val forecasts = uiState.dailyForecast
-                val overallMin = forecasts.minOfOrNull { it.temperatureMin } ?: 0.0
-                val overallMax = forecasts.maxOfOrNull { it.temperatureMax } ?: 100.0
-                // -1 means no card expanded
-                var expandedIndex by rememberSaveable { mutableIntStateOf(-1) }
+                Column {
+                    // Show error banner over stale data
+                    if (uiState.error != null) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.errorContainer)
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = uiState.error!!,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = { viewModel.retry(latitude, longitude) }) {
+                                Text("Retry", color = MaterialTheme.colorScheme.onErrorContainer)
+                            }
+                        }
+                    }
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                ) {
-                    itemsIndexed(forecasts) { index, day ->
+                    val forecasts = uiState.dailyForecast
+                    val overallMin = forecasts.minOfOrNull { it.temperatureMin } ?: 0.0
+                    val overallMax = forecasts.maxOfOrNull { it.temperatureMax } ?: 100.0
+                    var expandedIndex by rememberSaveable { mutableIntStateOf(-1) }
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                    ) {
+                        itemsIndexed(forecasts) { index, day ->
                         val hourlyData = uiState.hourlyByDate[day.date] ?: emptyList()
                         DailyForecastCard(
                             day = day,
@@ -132,6 +155,7 @@ fun ForecastScreen(
                             },
                         )
                     }
+                }
                 }
             }
         }

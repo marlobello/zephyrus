@@ -48,11 +48,6 @@ import com.zephyrus.app.ui.theme.HumidityHigh
 import com.zephyrus.app.ui.theme.HumidityLow
 import com.zephyrus.app.ui.theme.HumidityMedium
 import com.zephyrus.app.ui.theme.HumiditySaturated
-import com.zephyrus.app.ui.theme.PrecipExtreme
-import com.zephyrus.app.ui.theme.PrecipHeavy
-import com.zephyrus.app.ui.theme.PrecipLight
-import com.zephyrus.app.ui.theme.PrecipModerate
-import com.zephyrus.app.ui.theme.PrecipNone
 import com.zephyrus.app.ui.theme.PressureAboveAvg
 import com.zephyrus.app.ui.theme.PressureBelowAvg
 import com.zephyrus.app.ui.theme.PressureHigh
@@ -66,7 +61,6 @@ import com.zephyrus.app.ui.theme.TempLightRed
 import com.zephyrus.app.ui.theme.TempRed
 import com.zephyrus.app.ui.theme.TempWhite
 import com.zephyrus.app.ui.theme.humidityToArgb
-import com.zephyrus.app.ui.theme.precipitationToArgb
 import com.zephyrus.app.ui.theme.pressureToArgb
 import com.zephyrus.app.ui.theme.temperatureToArgb
 import com.zephyrus.app.ui.theme.toFahrenheit
@@ -76,9 +70,13 @@ import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
+import org.osmdroid.tileprovider.MapTileProviderBasic
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.util.MapTileIndex
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.GroundOverlay
+import org.osmdroid.views.overlay.TilesOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -186,32 +184,81 @@ fun MapsScreen(
                 }
             }
 
+            // Track radar overlay and its path to detect when tiles need rebuilding
+            var radarOverlayRef: TilesOverlay? by remember { mutableStateOf(null) }
+            var radarOverlayPath: String by remember { mutableStateOf("") }
+
             AndroidView(
                 factory = { mapView },
                 modifier = Modifier.fillMaxSize(),
                 update = { map ->
-                    val grid = when (uiState.activeLayer) {
-                        MapLayer.TEMPERATURE -> uiState.gridTemperatures
-                        MapLayer.HUMIDITY -> uiState.gridHumidity
-                        MapLayer.PRESSURE -> uiState.gridPressure
-                        MapLayer.PRECIPITATION -> uiState.gridPrecipitation
-                    }
-                    if (grid != null && grid.isNotEmpty() && grid[0].isNotEmpty()) {
-                        // Recycle old overlay bitmaps before removing
-                        map.overlays.filterIsInstance<GroundOverlay>().forEach { old ->
-                            old.image?.recycle()
-                        }
+                    if (uiState.activeLayer == MapLayer.RADAR) {
+                        // Remove grid overlays
+                        map.overlays.filterIsInstance<GroundOverlay>().forEach { it.image?.recycle() }
                         map.overlays.removeAll { it is GroundOverlay }
 
-                        val overlay = createWeatherOverlay(
-                            grid = grid,
-                            centerLat = uiState.centerLatitude,
-                            centerLon = uiState.centerLongitude,
-                            radiusDeg = uiState.radiusDegrees,
-                            layer = uiState.activeLayer,
-                            unit = uiState.temperatureUnit,
-                        )
-                        map.overlays.add(overlay)
+                        val path = uiState.radarTilePath
+                        val host = uiState.radarHost
+
+                        if (path.isNotEmpty() && host.isNotEmpty()) {
+                            // Recreate overlay only if the radar path changed (new frame)
+                            if (radarOverlayRef != null && radarOverlayPath != path) {
+                                map.overlays.remove(radarOverlayRef)
+                                radarOverlayRef = null
+                            }
+
+                            if (radarOverlayRef == null) {
+                                val radarSource = object : OnlineTileSourceBase(
+                                    "RainViewer", 0, 7, 256, ".png",
+                                    arrayOf(host),
+                                ) {
+                                    override fun getTileURLString(pMapTileIndex: Long): String {
+                                        val z = MapTileIndex.getZoom(pMapTileIndex)
+                                        val x = MapTileIndex.getX(pMapTileIndex)
+                                        val y = MapTileIndex.getY(pMapTileIndex)
+                                        return "$host$path/256/$z/$x/$y/0/1_0.png"
+                                    }
+                                }
+                                val tileProvider = MapTileProviderBasic(context, radarSource)
+                                val overlay = TilesOverlay(tileProvider, context)
+                                overlay.loadingBackgroundColor = android.graphics.Color.TRANSPARENT
+                                overlay.loadingLineColor = android.graphics.Color.TRANSPARENT
+                                map.overlays.add(overlay)
+                                radarOverlayRef = overlay
+                                radarOverlayPath = path
+                            } else if (!map.overlays.contains(radarOverlayRef)) {
+                                // Re-add existing overlay (was removed when switching layers)
+                                map.overlays.add(radarOverlayRef)
+                            }
+                        }
+                        map.invalidate()
+                    } else {
+                        // Hide radar tile overlay (keep reference for reuse)
+                        radarOverlayRef?.let { map.overlays.remove(it) }
+
+                        val grid = when (uiState.activeLayer) {
+                            MapLayer.TEMPERATURE -> uiState.gridTemperatures
+                            MapLayer.HUMIDITY -> uiState.gridHumidity
+                            MapLayer.PRESSURE -> uiState.gridPressure
+                            MapLayer.RADAR -> null // handled above
+                        }
+                        if (grid != null && grid.isNotEmpty() && grid[0].isNotEmpty()) {
+                            // Recycle old overlay bitmaps before removing
+                            map.overlays.filterIsInstance<GroundOverlay>().forEach { old ->
+                                old.image?.recycle()
+                            }
+                            map.overlays.removeAll { it is GroundOverlay }
+
+                            val overlay = createWeatherOverlay(
+                                grid = grid,
+                                centerLat = uiState.centerLatitude,
+                                centerLon = uiState.centerLongitude,
+                                radiusDeg = uiState.radiusDegrees,
+                                layer = uiState.activeLayer,
+                                unit = uiState.temperatureUnit,
+                            )
+                            map.overlays.add(overlay)
+                        }
                         map.invalidate()
                     }
                 },
@@ -244,14 +291,16 @@ fun MapsScreen(
                 }
             }
 
-            // Color legend
-            ColorLegend(
-                layer = uiState.activeLayer,
-                unit = uiState.temperatureUnit,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
-            )
+            // Color legend — hide for radar layer (RainViewer provides its own color scheme)
+            if (uiState.activeLayer != MapLayer.RADAR) {
+                ColorLegend(
+                    layer = uiState.activeLayer,
+                    unit = uiState.temperatureUnit,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                )
+            }
 
             if (uiState.isLoading) {
                 CircularProgressIndicator(
@@ -315,7 +364,7 @@ private fun createWeatherOverlay(
                 MapLayer.TEMPERATURE -> temperatureToArgb(toFahrenheit(value, unit), alpha = 120)
                 MapLayer.HUMIDITY -> humidityToArgb(value.toFloat(), alpha = 120)
                 MapLayer.PRESSURE -> pressureToArgb(value.toFloat(), alpha = 120)
-                MapLayer.PRECIPITATION -> precipitationToArgb(value.toFloat(), alpha = 120)
+                MapLayer.RADAR -> android.graphics.Color.TRANSPARENT // not used for radar
             }
             canvas.drawPoint(px.toFloat(), py.toFloat(), paint)
         }
@@ -357,11 +406,7 @@ private fun ColorLegend(
             "980",
             "1040 hPa",
         )
-        MapLayer.PRECIPITATION -> Triple(
-            listOf(PrecipNone, PrecipLight, PrecipModerate, PrecipHeavy, PrecipExtreme),
-            "0",
-            "0.5+ in/h",
-        )
+        MapLayer.RADAR -> Triple(emptyList(), "", "") // not shown for radar
     }
 
     Column(

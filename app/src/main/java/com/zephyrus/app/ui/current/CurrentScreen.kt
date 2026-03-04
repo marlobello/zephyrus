@@ -3,6 +3,7 @@ package com.zephyrus.app.ui.current
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,8 +57,6 @@ fun CurrentScreen(
     onSettingsClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
     onLocationResolved: (Double, Double, String) -> Unit = { _, _, _ -> },
-    pendingUseDeviceLocation: Boolean = false,
-    onDeviceLocationConsumed: () -> Unit = {},
     viewModel: CurrentViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -95,17 +95,6 @@ fun CurrentScreen(
         }
     }
 
-    // Handle "Current Location" selected from search
-    LaunchedEffect(pendingUseDeviceLocation) {
-        if (pendingUseDeviceLocation) {
-            viewModel.resolveDeviceLocation { location ->
-                val displayName = if (location.admin1.isNotEmpty()) "${location.name}, ${location.admin1}" else location.name
-                onLocationResolved(location.latitude, location.longitude, displayName)
-            }
-            onDeviceLocationConsumed()
-        }
-    }
-
     Column(modifier = Modifier.fillMaxSize()) {
         ZephyrusTopAppBar(
             locationName = locationName,
@@ -117,17 +106,30 @@ fun CurrentScreen(
         )
 
         when {
-            uiState.isLoading -> LoadingContent()
-            uiState.error != null -> ErrorContent(
+            uiState.isLoading && uiState.currentWeather == null -> LoadingContent()
+            uiState.error != null && uiState.currentWeather == null -> ErrorContent(
                 message = uiState.error!!,
                 onRetry = { viewModel.retry() },
             )
-            uiState.currentWeather != null -> WeatherContent(
-                weather = uiState.currentWeather!!,
-                hourly = uiState.hourlyForecast,
-                unit = uiState.temperatureUnit,
-                clockFormat = uiState.clockFormat,
-            )
+            else -> {
+                Column {
+                    // Show error banner over stale data
+                    if (uiState.error != null) {
+                        ErrorBanner(
+                            message = uiState.error!!,
+                            onRetry = { viewModel.retry() },
+                        )
+                    }
+                    if (uiState.currentWeather != null) {
+                        WeatherContent(
+                            weather = uiState.currentWeather!!,
+                            hourly = uiState.hourlyForecast,
+                            unit = uiState.temperatureUnit,
+                            clockFormat = uiState.clockFormat,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -158,6 +160,28 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onRetry) { Text("Retry") }
+    }
+}
+
+@Composable
+private fun ErrorBanner(message: String, onRetry: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onRetry) {
+            Text("Retry", color = MaterialTheme.colorScheme.onErrorContainer)
+        }
     }
 }
 

@@ -3,9 +3,13 @@ package com.zephyrus.app.ui.maps
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zephyrus.app.data.local.UserPreferences
+import com.zephyrus.app.data.remote.RainViewerApiService
+import com.zephyrus.app.data.remote.withRetry
 import com.zephyrus.app.data.repository.WeatherRepository
+import com.zephyrus.app.util.ErrorMessages
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,6 +25,7 @@ import kotlin.math.pow
 class MapsViewModel @Inject constructor(
     private val weatherRepository: WeatherRepository,
     private val userPreferences: UserPreferences,
+    private val rainViewerApi: RainViewerApiService,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapsUiState())
@@ -30,11 +35,55 @@ class MapsViewModel @Inject constructor(
     private var lastFetchLat = 0.0
     private var lastFetchLon = 0.0
     private var lastFetchZoom = 0.0
+    private var lastRadarFetchTime = 0L
+
+    companion object {
+        private const val RADAR_CACHE_TTL_MS = 5 * 60 * 1000L // 5 minutes
+        private const val RADAR_REFRESH_INTERVAL_MS = 10 * 60 * 1000L // 10 minutes
+    }
 
     init {
         viewModelScope.launch {
             userPreferences.temperatureUnit.collect { unit ->
                 _uiState.update { it.copy(temperatureUnit = unit) }
+            }
+        }
+        fetchRadarTimestamp()
+        startRadarAutoRefresh()
+    }
+
+    private fun startRadarAutoRefresh() {
+        viewModelScope.launch {
+            while (true) {
+                delay(RADAR_REFRESH_INTERVAL_MS)
+                Timber.d("Auto-refreshing radar timestamp")
+                fetchRadarTimestamp(force = true)
+            }
+        }
+    }
+
+    private fun fetchRadarTimestamp(force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && lastRadarFetchTime > 0 && (now - lastRadarFetchTime) < RADAR_CACHE_TTL_MS) {
+            Timber.d("Radar metadata still fresh, skipping fetch")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = withRetry(tag = "RainViewer") {
+                    rainViewerApi.getWeatherMaps()
+                }
+                val latestFrame = response.radar.past.lastOrNull()
+                if (latestFrame != null) {
+                    Timber.d("RainViewer radar path: %s%s", response.host, latestFrame.path)
+                    _uiState.update {
+                        it.copy(radarHost = response.host, radarTilePath = latestFrame.path)
+                    }
+                    lastRadarFetchTime = System.currentTimeMillis()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to fetch RainViewer radar timestamp")
             }
         }
     }
@@ -96,14 +145,12 @@ class MapsViewModel @Inject constructor(
                     val temps = Array(rows) { r -> DoubleArray(cols) { c -> grid[r][c].temperature } }
                     val humidity = Array(rows) { r -> DoubleArray(cols) { c -> grid[r][c].humidity } }
                     val pressure = Array(rows) { r -> DoubleArray(cols) { c -> grid[r][c].pressure } }
-                    val precipitation = Array(rows) { r -> DoubleArray(cols) { c -> grid[r][c].precipitation } }
                     Timber.d("Grid data loaded: %dx%d", rows, cols)
                     _uiState.update {
                         it.copy(
                             gridTemperatures = temps,
                             gridHumidity = humidity,
                             gridPressure = pressure,
-                            gridPrecipitation = precipitation,
                             isLoading = false,
                         )
                     }
@@ -111,7 +158,7 @@ class MapsViewModel @Inject constructor(
                 .onFailure { e ->
                     Timber.e(e, "Failed to load grid data")
                     _uiState.update {
-                        it.copy(isLoading = false, error = "Unable to load map data.")
+                        it.copy(isLoading = false, error = ErrorMessages.forMap(e))
                     }
                 }
         }
@@ -123,6 +170,7 @@ class MapsViewModel @Inject constructor(
 
     fun refresh() {
         weatherRepository.clearGridCache()
+        fetchRadarTimestamp(force = true)
         val prevZoom = lastFetchZoom
         lastFetchZoom = 0.0 // Force re-fetch
         val state = _uiState.value

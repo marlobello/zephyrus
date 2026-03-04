@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zephyrus.app.data.local.UserPreferences
 import com.zephyrus.app.data.repository.WeatherRepository
+import com.zephyrus.app.util.ErrorMessages
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,7 +44,8 @@ class ForecastViewModel @Inject constructor(
 
     fun loadForecast(latitude: Double, longitude: Double) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            val hasExistingData = _uiState.value.dailyForecast.isNotEmpty()
+            _uiState.update { it.copy(isLoading = !hasExistingData, error = null) }
             val unit = userPreferences.temperatureUnit.first()
             weatherRepository.getDailyWithHourlyForecast(latitude, longitude, unit)
                 .onSuccess { (daily, hourly) ->
@@ -53,13 +55,14 @@ class ForecastViewModel @Inject constructor(
                             dailyForecast = daily,
                             hourlyByDate = hourlyByDate,
                             isLoading = false,
+                            error = null,
                         )
                     }
                 }
                 .onFailure { e ->
                     Timber.e(e, "Failed to load forecast")
                     _uiState.update {
-                        it.copy(isLoading = false, error = "Unable to load forecast data.")
+                        it.copy(isLoading = false, error = ErrorMessages.forForecast(e))
                     }
                 }
         }

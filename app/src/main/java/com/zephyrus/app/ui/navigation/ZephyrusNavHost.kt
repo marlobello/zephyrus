@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -32,7 +33,10 @@ private const val SETTINGS_ROUTE = "settings"
 private const val ABOUT_ROUTE = "about"
 
 @Composable
-fun ZephyrusNavHost(modifier: Modifier = Modifier) {
+fun ZephyrusNavHost(
+    modifier: Modifier = Modifier,
+    navigationViewModel: NavigationViewModel = hiltViewModel(),
+) {
     val navController = rememberNavController()
     val screens = ZephyrusScreen.entries
 
@@ -40,9 +44,6 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
     var activeLatitude by rememberSaveable { mutableDoubleStateOf(0.0) }
     var activeLongitude by rememberSaveable { mutableDoubleStateOf(0.0) }
     var activeLocationName by rememberSaveable { mutableStateOf("Zephyrus") }
-
-    // Signal to switch back to device location
-    var pendingUseDeviceLocation by mutableStateOf(false)
 
     Scaffold(
         bottomBar = {
@@ -95,8 +96,6 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
                         activeLongitude = lon
                         activeLocationName = name
                     },
-                    pendingUseDeviceLocation = pendingUseDeviceLocation,
-                    onDeviceLocationConsumed = { pendingUseDeviceLocation = false },
                 )
             }
             composable(ZephyrusScreen.Forecast.route) {
@@ -132,14 +131,19 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
                         navController.popBackStack()
                     },
                     onCurrentLocationSelected = {
-                        pendingUseDeviceLocation = true
-                        // Navigate to Current tab where GPS resolution happens
-                        navController.navigate(ZephyrusScreen.Current.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                        }
+                        // Resolve GPS and update shared state — stays on current screen
+                        navigationViewModel.resolveDeviceLocation(
+                            onResolved = { location ->
+                                activeLatitude = location.latitude
+                                activeLongitude = location.longitude
+                                activeLocationName = if (location.admin1.isNotEmpty()) {
+                                    "${location.name}, ${location.admin1}"
+                                } else {
+                                    location.name
+                                }
+                            },
+                        )
+                        navController.popBackStack()
                     },
                     onDismiss = { navController.popBackStack() },
                 )

@@ -15,7 +15,7 @@ In Greek mythology, **Zephyrus** (Ζέφυρος) is the god of the west wind �
 - **Current Conditions** — Temperature, wind, humidity, pressure, UV index, precipitation, and descriptive weather indicators (sunny, cloudy, rain, snow, fog, etc.)
 - **Hourly Forecast** — At least 8 hours of hourly forecast data, extending into the next day when needed
 - **10-Day Forecast** — Extended forecast with daily highs/lows, humidity, wind, and weather conditions
-- **Interactive Weather Maps** — Temperature, humidity, pressure, and precipitation overlays on OpenStreetMap tiles with color legends and viewport-aware data loading
+- **Interactive Weather Maps** — Temperature, humidity, pressure overlays and Doppler radar imagery on OpenStreetMap tiles with color legends and viewport-aware data loading
 - **Location Search** — Search by city name, zip code, or airport code; save favorite locations for quick access
 - **Device Location** — Automatically detects your current location via GPS
 - **Units** — Toggle between Fahrenheit and Celsius
@@ -34,6 +34,8 @@ In Greek mythology, **Zephyrus** (Ζέφυρος) is the god of the west wind �
 ## Weather Data
 
 All weather data is provided by [Open-Meteo](https://open-meteo.com/) — a free, open-source weather API that requires no API key. Data is sourced from national weather services. Currently optimized for United States locations, with international support planned for the future.
+
+Radar imagery is provided by [RainViewer](https://www.rainviewer.com/) — a free radar data API with global Doppler radar coverage.
 
 Map tiles are provided by [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.
 

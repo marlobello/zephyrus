@@ -7,6 +7,7 @@ import com.zephyrus.app.data.repository.LocationRepository
 import com.zephyrus.app.data.repository.WeatherRepository
 import com.zephyrus.app.domain.model.Location
 import com.zephyrus.app.domain.model.TemperatureUnit
+import com.zephyrus.app.util.ErrorMessages
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -102,7 +103,7 @@ class CurrentViewModel @Inject constructor(
                 .onFailure { e ->
                     Timber.e(e, "Failed to get device location")
                     _uiState.update {
-                        it.copy(isLoading = false, error = "Unable to determine your location.")
+                        it.copy(isLoading = false, error = ErrorMessages.forLocation(e))
                     }
                 }
         }
@@ -133,15 +134,18 @@ class CurrentViewModel @Inject constructor(
 
     private fun loadWeather(latitude: Double, longitude: Double) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            val hasExistingData = _uiState.value.currentWeather != null
+            _uiState.update { it.copy(isLoading = !hasExistingData, error = null) }
             val unit = _uiState.value.temperatureUnit
 
             weatherRepository.getCurrentWeather(latitude, longitude, unit)
                 .onSuccess { weather ->
-                    _uiState.update { it.copy(currentWeather = weather) }
+                    _uiState.update { it.copy(currentWeather = weather, error = null) }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(error = "Unable to load weather data.") }
+                    _uiState.update {
+                        it.copy(error = ErrorMessages.forWeather(e))
+                    }
                 }
 
             weatherRepository.getHourlyForecast(latitude, longitude, unit)

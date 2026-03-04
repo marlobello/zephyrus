@@ -8,6 +8,7 @@ import com.zephyrus.app.data.local.SavedLocationDao
 import com.zephyrus.app.data.local.SavedLocationEntity
 import com.zephyrus.app.data.model.GeocodingResult
 import com.zephyrus.app.data.remote.GeocodingApiService
+import com.zephyrus.app.data.remote.withRetry
 import com.zephyrus.app.domain.model.Location
 import com.zephyrus.app.util.AirportCodes
 import kotlinx.coroutines.flow.Flow
@@ -69,7 +70,9 @@ class LocationRepository @Inject constructor(
         // Check if query is an airport code
         val searchQuery = AirportCodes.toCityName(query.uppercase()) ?: query
 
-        val response = geocodingApi.searchLocations(searchQuery)
+        val response = withRetry(tag = "Geocoding") {
+            geocodingApi.searchLocations(searchQuery)
+        }
         response.results.map { it.toDomainLocation() }
     }.onFailure { Timber.e(it, "Failed to search locations") }
 
