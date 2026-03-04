@@ -124,7 +124,7 @@ private fun DrawScope.drawSunArc(
     val horizonY = height * 0.72f
     val arcRadiusX = arcWidth / 2f
     // Flatten the arc to ~60% of a full semicircle for a more compact look
-    val arcRadiusY = arcRadiusX * 0.55f
+    val arcRadiusY = arcRadiusX * 0.38f
 
     // Draw dashed horizon line
     drawLine(
@@ -176,11 +176,11 @@ private fun DrawScope.drawSunArc(
     val sunY = horizonY - arcRadiusY * sin(sunAngle)
 
     // Outer glow
-    drawCircle(color = sunColor.copy(alpha = 0.2f), radius = 14f, center = Offset(sunX, sunY))
+    drawCircle(color = sunColor.copy(alpha = 0.2f), radius = 18f, center = Offset(sunX, sunY))
     // Sun dot
-    drawCircle(color = sunColor, radius = 8f, center = Offset(sunX, sunY))
+    drawCircle(color = sunColor, radius = 11f, center = Offset(sunX, sunY))
     // Inner highlight
-    drawCircle(color = Color.White.copy(alpha = 0.6f), radius = 4f, center = Offset(sunX, sunY))
+    drawCircle(color = Color.White.copy(alpha = 0.6f), radius = 5f, center = Offset(sunX, sunY))
 
     // Draw sunrise label (bottom-left)
     val sunriseResult = textMeasurer.measure(sunriseLabel, labelStyle)
