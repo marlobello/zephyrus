@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 data class WeatherResponse(
     val latitude: Double,
     val longitude: Double,
+    val timezone: String = "UTC",
     @SerialName("current") val current: CurrentData? = null,
     @SerialName("hourly") val hourly: HourlyData? = null,
     @SerialName("daily") val daily: DailyData? = null,

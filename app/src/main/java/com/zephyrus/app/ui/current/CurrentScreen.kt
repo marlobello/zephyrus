@@ -275,6 +275,7 @@ private fun WeatherContent(
             SunArcCard(
                 sunrise = weather.sunrise,
                 sunset = weather.sunset,
+                timezone = weather.timezone,
                 clockFormat = clockFormat,
             )
         }
