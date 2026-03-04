@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.filled.Opacity
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -72,7 +72,7 @@ fun HourlyCard(hour: HourlyForecast, unit: TemperatureUnit, clockFormat: ClockFo
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    imageVector = Icons.Filled.WaterDrop,
+                    imageVector = Icons.Filled.Opacity,
                     contentDescription = "Humidity",
                     modifier = Modifier.size(10.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
