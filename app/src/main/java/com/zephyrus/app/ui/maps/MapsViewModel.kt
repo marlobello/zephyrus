@@ -6,6 +6,7 @@ import com.zephyrus.app.data.local.UserPreferences
 import com.zephyrus.app.data.remote.RainViewerApiService
 import com.zephyrus.app.data.remote.withRetry
 import com.zephyrus.app.data.repository.WeatherRepository
+import com.zephyrus.app.util.ErrorMessages
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -157,7 +158,7 @@ class MapsViewModel @Inject constructor(
                 .onFailure { e ->
                     Timber.e(e, "Failed to load grid data")
                     _uiState.update {
-                        it.copy(isLoading = false, error = "Unable to load map data.")
+                        it.copy(isLoading = false, error = ErrorMessages.forMap(e))
                     }
                 }
         }

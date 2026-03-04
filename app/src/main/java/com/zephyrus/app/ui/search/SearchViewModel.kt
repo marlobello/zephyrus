@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zephyrus.app.data.repository.LocationRepository
 import com.zephyrus.app.domain.model.Location
+import com.zephyrus.app.util.ErrorMessages
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -60,7 +61,7 @@ class SearchViewModel @Inject constructor(
             }
             .onFailure { e ->
                 Timber.e(e, "Search failed")
-                _uiState.update { it.copy(error = "Search failed.", isSearching = false) }
+                _uiState.update { it.copy(error = ErrorMessages.forSearch(e), isSearching = false) }
             }
     }
 
