@@ -86,7 +86,6 @@ fun MapsScreen(
                     setTileSource(TileSourceFactory.MAPNIK)
                     setMultiTouchControls(true)
                     controller.setZoom(8.0)
-                    setMinZoomLevel(5.0)
                     setMaxZoomLevel(18.0)
                     // Debounced listener — fires after 500ms of inactivity
                     addMapListener(DelayedMapListener(object : MapListener {
@@ -135,10 +134,24 @@ fun MapsScreen(
                     // Wait for layout so boundingBox is accurate
                     kotlinx.coroutines.delay(300)
                     val bb = mapView.boundingBox
+                    val visibleLatSpan = bb.latNorth - bb.latSouth
+                    val visibleLonSpan = bb.lonEast - bb.lonWest
+                    val visibleSpan = maxOf(visibleLatSpan, visibleLonSpan)
+
+                    // Calculate min zoom: overlay max diameter is 20° (radius 10° × 2)
+                    // Each zoom level halves the visible span, so:
+                    // minZoom = currentZoom - log2(maxDiameter / currentSpan)
+                    val maxOverlayDiameter = 20.0 // 2 * MAX_RADIUS (10.0°)
+                    if (visibleSpan > 0) {
+                        val currentZoom = mapView.zoomLevelDouble
+                        val minZoom = currentZoom - kotlin.math.ln(maxOverlayDiameter / visibleSpan) / kotlin.math.ln(2.0)
+                        mapView.setMinZoomLevel(minZoom.coerceAtLeast(2.0))
+                    }
+
                     viewModel.onViewportChanged(
                         latitude, longitude, mapView.zoomLevelDouble,
-                        visibleLatSpan = bb.latNorth - bb.latSouth,
-                        visibleLonSpan = bb.lonEast - bb.lonWest,
+                        visibleLatSpan = visibleLatSpan,
+                        visibleLonSpan = visibleLonSpan,
                     )
                 }
             }
