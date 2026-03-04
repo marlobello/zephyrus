@@ -65,10 +65,24 @@ class SearchViewModel @Inject constructor(
             }
     }
 
-    fun saveLocation(location: Location) {
+    fun toggleSaveLocation(location: Location) {
         viewModelScope.launch {
-            Timber.d("Saving location: %s", location.name)
-            locationRepository.saveLocation(location)
+            val existing = _uiState.value.savedLocations.find {
+                it.latitude == location.latitude && it.longitude == location.longitude
+            }
+            if (existing != null) {
+                Timber.d("Removing saved location: %s", location.name)
+                locationRepository.deleteLocation(existing.id)
+            } else {
+                Timber.d("Saving location: %s", location.name)
+                locationRepository.saveLocation(location)
+            }
+        }
+    }
+
+    fun isLocationSaved(location: Location): Boolean {
+        return _uiState.value.savedLocations.any {
+            it.latitude == location.latitude && it.longitude == location.longitude
         }
     }
 

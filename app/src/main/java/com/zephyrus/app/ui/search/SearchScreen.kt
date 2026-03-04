@@ -101,6 +101,7 @@ fun SearchScreen(
                     )
                 }
                 items(uiState.searchResults) { location ->
+                    val isSaved = viewModel.isLocationSaved(location)
                     ListItem(
                         headlineContent = { Text(location.name) },
                         supportingContent = {
@@ -111,8 +112,11 @@ fun SearchScreen(
                             if (subtitle.isNotEmpty()) Text(subtitle)
                         },
                         trailingContent = {
-                            IconButton(onClick = { viewModel.saveLocation(location) }) {
-                                Icon(Icons.Filled.BookmarkBorder, contentDescription = "Save")
+                            IconButton(onClick = { viewModel.toggleSaveLocation(location) }) {
+                                Icon(
+                                    if (isSaved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                    contentDescription = if (isSaved) "Remove bookmark" else "Save",
+                                )
                             }
                         },
                         modifier = Modifier.clickable { onLocationSelected(location) },
