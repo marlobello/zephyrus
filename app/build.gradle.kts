@@ -14,8 +14,20 @@ android {
         applicationId = "com.zephyrus.app"
         minSdk = 31
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = (findProperty("VERSION_CODE") as? String)?.toIntOrNull() ?: 1
+        versionName = (findProperty("VERSION_NAME") as? String) ?: "1.0.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            val ksFile = System.getenv("RELEASE_KEYSTORE_FILE")
+            if (ksFile != null && file(ksFile).exists()) {
+                storeFile = file(ksFile)
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -25,6 +37,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val ksFile = System.getenv("RELEASE_KEYSTORE_FILE")
+            if (ksFile != null && file(ksFile).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
