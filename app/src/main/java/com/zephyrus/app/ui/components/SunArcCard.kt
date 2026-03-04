@@ -61,6 +61,7 @@ fun SunArcCard(
 
     val sunriseLabel = formatSunTime(sunriseTime, clockFormat)
     val sunsetLabel = formatSunTime(sunsetTime, clockFormat)
+    val currentTimeLabel = formatSunTime(locationNow, clockFormat)
 
     val dayDuration = sunsetTime.toSecondOfDay() - sunriseTime.toSecondOfDay()
     val dayFraction = if (dayDuration > 0) dayDuration.toFloat() / SECONDS_IN_DAY else 0.5f
@@ -89,6 +90,7 @@ fun SunArcCard(
                 horizonColor = horizonColor,
                 sunriseLabel = sunriseLabel,
                 sunsetLabel = sunsetLabel,
+                currentTimeLabel = currentTimeLabel,
                 titleStyle = titleStyle,
                 labelStyle = labelStyle,
                 textMeasurer = textMeasurer,
@@ -104,6 +106,7 @@ private fun DrawScope.drawSunArc(
     horizonColor: Color,
     sunriseLabel: String,
     sunsetLabel: String,
+    currentTimeLabel: String,
     titleStyle: TextStyle,
     labelStyle: TextStyle,
     textMeasurer: TextMeasurer,
@@ -116,14 +119,16 @@ private fun DrawScope.drawSunArc(
     val arcRight = width - hPadding
     val arcWidth = arcRight - arcLeft
     val centerX = arcLeft + arcWidth / 2f
-    val horizonY = height * 0.50f
     val arcRadiusX = arcWidth / 2f
     val arcRadiusY = arcRadiusX * 0.30f
 
-    // Shift ellipse center based on daylight fraction
-    // At equinox (0.5): centered on horizon. Summer: up. Winter: down.
+    // Ellipse is always vertically centered in the canvas
+    val ellipseCenterY = height * 0.46f
+
+    // Horizon shifts based on daylight fraction:
+    // equinox (0.5) → horizon at ellipse center; summer → horizon lower; winter → horizon higher
     val verticalOffset = arcRadiusY * (2f * dayFraction - 1f)
-    val ellipseCenterY = horizonY - verticalOffset
+    val horizonY = ellipseCenterY + verticalOffset
 
     // Draw dashed horizon line
     drawLine(
@@ -238,6 +243,20 @@ private fun DrawScope.drawSunArc(
     drawCircle(color = sunColor.copy(alpha = 0.2f), radius = 18f, center = sunPos)
     drawCircle(color = sunColor, radius = 11f, center = sunPos)
     drawCircle(color = Color.White.copy(alpha = 0.6f), radius = 5f, center = sunPos)
+
+    // Current time label near sun
+    val timeResult = textMeasurer.measure(currentTimeLabel, labelStyle)
+    val timeX = sunPos.x - timeResult.size.width / 2f
+    // Place label above the sun if sun is in lower half, below if in upper half
+    val timeY = if (sunPos.y > ellipseCenterY) {
+        sunPos.y - 18f - timeResult.size.height
+    } else {
+        sunPos.y + 20f
+    }
+    drawText(
+        textLayoutResult = timeResult,
+        topLeft = Offset(timeX, timeY),
+    )
 
     // Sunrise label (left of horizon)
     val sunriseResult = textMeasurer.measure(sunriseLabel, labelStyle)
