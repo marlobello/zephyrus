@@ -132,7 +132,14 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
                     },
                     onCurrentLocationSelected = {
                         pendingUseDeviceLocation = true
-                        navController.popBackStack()
+                        // Navigate to Current tab so GPS resolution runs immediately
+                        navController.navigate(ZephyrusScreen.Current.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     },
                     onDismiss = { navController.popBackStack() },
                 )
