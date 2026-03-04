@@ -39,7 +39,6 @@ import com.zephyrus.app.domain.model.CardinalDirection
 import com.zephyrus.app.domain.model.ClockFormat
 import com.zephyrus.app.domain.model.CurrentWeather
 import com.zephyrus.app.domain.model.HourlyForecast
-import com.zephyrus.app.domain.model.Location
 import com.zephyrus.app.domain.model.TemperatureUnit
 import com.zephyrus.app.ui.components.HourlyForecastRow
 import com.zephyrus.app.ui.components.ZephyrusTopAppBar
@@ -49,12 +48,13 @@ import java.time.LocalDateTime
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CurrentScreen(
+    latitude: Double = 0.0,
+    longitude: Double = 0.0,
+    locationName: String = "Zephyrus",
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
     onLocationResolved: (Double, Double, String) -> Unit = { _, _, _ -> },
-    pendingSearchLocation: Location? = null,
-    onSearchLocationConsumed: () -> Unit = {},
     pendingUseDeviceLocation: Boolean = false,
     onDeviceLocationConsumed: () -> Unit = {},
     viewModel: CurrentViewModel = hiltViewModel(),
@@ -65,8 +65,18 @@ fun CurrentScreen(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
         val granted = permissions.values.any { it }
-        if (granted) viewModel.onLocationPermissionGranted()
-        else viewModel.onLocationPermissionDenied()
+        if (granted) {
+            viewModel.onLocationPermissionGranted()
+            // If no location set yet, resolve GPS for initial load
+            if (latitude == 0.0 && longitude == 0.0) {
+                viewModel.resolveDeviceLocation { location ->
+                    val displayName = if (location.admin1.isNotEmpty()) "${location.name}, ${location.admin1}" else location.name
+                    onLocationResolved(location.latitude, location.longitude, displayName)
+                }
+            }
+        } else {
+            viewModel.onLocationPermissionDenied()
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -78,35 +88,27 @@ fun CurrentScreen(
         )
     }
 
-    // Handle location selected from search
-    LaunchedEffect(pendingSearchLocation) {
-        pendingSearchLocation?.let { location ->
-            viewModel.selectLocation(location)
-            onSearchLocationConsumed()
+    // Load weather when coordinates change
+    LaunchedEffect(latitude, longitude) {
+        if (latitude != 0.0 || longitude != 0.0) {
+            viewModel.loadWeatherAt(latitude, longitude)
         }
     }
 
     // Handle "Current Location" selected from search
     LaunchedEffect(pendingUseDeviceLocation) {
         if (pendingUseDeviceLocation) {
-            viewModel.switchToDeviceLocation()
+            viewModel.resolveDeviceLocation { location ->
+                val displayName = if (location.admin1.isNotEmpty()) "${location.name}, ${location.admin1}" else location.name
+                onLocationResolved(location.latitude, location.longitude, displayName)
+            }
             onDeviceLocationConsumed()
-        }
-    }
-
-    // Push active location up to parent for sharing with other tabs
-    LaunchedEffect(uiState.location) {
-        uiState.location?.let { loc ->
-            val displayName = if (loc.admin1.isNotEmpty()) "${loc.name}, ${loc.admin1}" else loc.name
-            onLocationResolved(loc.latitude, loc.longitude, displayName)
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
         ZephyrusTopAppBar(
-            locationName = uiState.location?.let { loc ->
-                if (loc.admin1.isNotEmpty()) "${loc.name}, ${loc.admin1}" else loc.name
-            } ?: "Zephyrus",
+            locationName = locationName,
             subtitle = "Current Conditions",
             onRefreshClick = { viewModel.refresh() },
             onSearchClick = onSearchClick,

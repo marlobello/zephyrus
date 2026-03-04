@@ -19,7 +19,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.zephyrus.app.domain.model.Location
 import com.zephyrus.app.ui.about.AboutScreen
 import com.zephyrus.app.ui.current.CurrentScreen
 import com.zephyrus.app.ui.forecast.ForecastScreen
@@ -42,8 +41,6 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
     var activeLongitude by rememberSaveable { mutableDoubleStateOf(0.0) }
     var activeLocationName by rememberSaveable { mutableStateOf("Zephyrus") }
 
-    // Location selected from search — consumed by CurrentScreen
-    var pendingSearchLocation by mutableStateOf<Location?>(null)
     // Signal to switch back to device location
     var pendingUseDeviceLocation by mutableStateOf(false)
 
@@ -81,6 +78,9 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
         ) {
             composable(ZephyrusScreen.Current.route) {
                 CurrentScreen(
+                    latitude = activeLatitude,
+                    longitude = activeLongitude,
+                    locationName = activeLocationName,
                     onSearchClick = {
                         navController.navigate(SEARCH_ROUTE)
                     },
@@ -95,8 +95,6 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
                         activeLongitude = lon
                         activeLocationName = name
                     },
-                    pendingSearchLocation = pendingSearchLocation,
-                    onSearchLocationConsumed = { pendingSearchLocation = null },
                     pendingUseDeviceLocation = pendingUseDeviceLocation,
                     onDeviceLocationConsumed = { pendingUseDeviceLocation = false },
                 )
@@ -124,21 +122,23 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
             composable(SEARCH_ROUTE) {
                 SearchScreen(
                     onLocationSelected = { location ->
-                        pendingSearchLocation = location
                         activeLatitude = location.latitude
                         activeLongitude = location.longitude
-                        activeLocationName = location.name
+                        activeLocationName = if (location.admin1.isNotEmpty()) {
+                            "${location.name}, ${location.admin1}"
+                        } else {
+                            location.name
+                        }
                         navController.popBackStack()
                     },
                     onCurrentLocationSelected = {
                         pendingUseDeviceLocation = true
-                        // Navigate to Current tab so GPS resolution runs immediately
+                        // Navigate to Current tab where GPS resolution happens
                         navController.navigate(ZephyrusScreen.Current.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 saveState = true
                             }
                             launchSingleTop = true
-                            restoreState = true
                         }
                     },
                     onDismiss = { navController.popBackStack() },

@@ -33,11 +33,12 @@ class CurrentViewModel @Inject constructor(
 
     private var lastRefreshTimeMs: Long = 0L
     private var autoRefreshJob: Job? = null
+    private var lastLoadedLat: Double = Double.NaN
+    private var lastLoadedLon: Double = Double.NaN
 
     init {
         Timber.d("CurrentViewModel initialized")
         observePreferences()
-        startAutoRefresh()
     }
 
     private fun observePreferences() {
@@ -49,34 +50,16 @@ class CurrentViewModel @Inject constructor(
                 .collect { (unit, clockFmt) ->
                     val unitChanged = _uiState.value.temperatureUnit != unit
                     _uiState.update { it.copy(temperatureUnit = unit, clockFormat = clockFmt) }
-                    if (unitChanged) {
-                        _uiState.value.location?.let { loadWeather(it) }
+                    if (unitChanged && !lastLoadedLat.isNaN()) {
+                        loadWeather(lastLoadedLat, lastLoadedLon)
                     }
                 }
-        }
-    }
-
-    private fun startAutoRefresh() {
-        autoRefreshJob?.cancel()
-        autoRefreshJob = viewModelScope.launch {
-            while (true) {
-                delay(REFRESH_INTERVAL_MS)
-                val location = _uiState.value.location
-                if (location != null) {
-                    Timber.d("Auto-refreshing weather data for %s", location.name)
-                    loadWeather(location)
-                }
-            }
         }
     }
 
     fun onLocationPermissionGranted() {
         Timber.d("Location permission granted")
         _uiState.update { it.copy(hasLocationPermission = true) }
-        // Only load device location if no location is set yet
-        if (_uiState.value.location == null) {
-            loadDeviceLocation()
-        }
     }
 
     fun onLocationPermissionDenied() {
@@ -90,41 +73,31 @@ class CurrentViewModel @Inject constructor(
         }
     }
 
-    fun selectLocation(location: Location) {
-        Timber.d("Location selected: %s", location.name)
-        _uiState.update { it.copy(location = location) }
-        loadWeather(location)
+    /**
+     * Load weather for coordinates passed from the shared navigation state.
+     * Skips reload if coordinates haven't changed since last load.
+     */
+    fun loadWeatherAt(latitude: Double, longitude: Double) {
+        if (latitude == lastLoadedLat && longitude == lastLoadedLon) return
+        Timber.d("Loading weather at (%.4f, %.4f)", latitude, longitude)
+        lastLoadedLat = latitude
+        lastLoadedLon = longitude
+        loadWeather(latitude, longitude)
+        startAutoRefresh(latitude, longitude)
     }
 
-    fun switchToDeviceLocation() {
-        Timber.d("Switching to device location")
-        if (_uiState.value.hasLocationPermission) {
-            loadDeviceLocation()
-        }
-    }
-
-    fun refresh() {
-        Timber.d("Manual refresh requested")
-        val location = _uiState.value.location
-        if (location != null) {
-            loadWeather(location)
-        } else if (_uiState.value.hasLocationPermission) {
-            loadDeviceLocation()
-        }
-    }
-
-    fun retry() {
-        Timber.d("Retrying weather load")
-        refresh()
-    }
-
-    private fun loadDeviceLocation() {
+    /**
+     * Resolve device GPS location. Returns the resolved Location via callback.
+     */
+    fun resolveDeviceLocation(onResolved: (Location) -> Unit) {
+        Timber.d("Resolving device location")
+        if (!_uiState.value.hasLocationPermission) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             locationRepository.getDeviceLocation()
                 .onSuccess { location ->
-                    _uiState.update { it.copy(location = location) }
-                    loadWeather(location)
+                    Timber.d("Device location resolved: %s (%.4f, %.4f)", location.name, location.latitude, location.longitude)
+                    onResolved(location)
                 }
                 .onFailure { e ->
                     Timber.e(e, "Failed to get device location")
@@ -135,12 +108,35 @@ class CurrentViewModel @Inject constructor(
         }
     }
 
-    private fun loadWeather(location: Location) {
+    fun refresh() {
+        Timber.d("Manual refresh requested")
+        if (!lastLoadedLat.isNaN() && !lastLoadedLon.isNaN()) {
+            loadWeather(lastLoadedLat, lastLoadedLon)
+        }
+    }
+
+    fun retry() {
+        Timber.d("Retrying weather load")
+        refresh()
+    }
+
+    private fun startAutoRefresh(latitude: Double, longitude: Double) {
+        autoRefreshJob?.cancel()
+        autoRefreshJob = viewModelScope.launch {
+            while (true) {
+                delay(REFRESH_INTERVAL_MS)
+                Timber.d("Auto-refreshing weather data")
+                loadWeather(latitude, longitude)
+            }
+        }
+    }
+
+    private fun loadWeather(latitude: Double, longitude: Double) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             val unit = _uiState.value.temperatureUnit
 
-            weatherRepository.getCurrentWeather(location.latitude, location.longitude, unit)
+            weatherRepository.getCurrentWeather(latitude, longitude, unit)
                 .onSuccess { weather ->
                     _uiState.update { it.copy(currentWeather = weather) }
                 }
@@ -148,7 +144,7 @@ class CurrentViewModel @Inject constructor(
                     _uiState.update { it.copy(error = "Unable to load weather data.") }
                 }
 
-            weatherRepository.getHourlyForecast(location.latitude, location.longitude, unit)
+            weatherRepository.getHourlyForecast(latitude, longitude, unit)
                 .onSuccess { hourly ->
                     lastRefreshTimeMs = System.currentTimeMillis()
                     Timber.d("Weather data refreshed at %d", lastRefreshTimeMs)
