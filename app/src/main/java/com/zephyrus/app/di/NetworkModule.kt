@@ -2,6 +2,7 @@ package com.zephyrus.app.di
 
 import com.zephyrus.app.data.remote.AirQualityApiService
 import com.zephyrus.app.data.remote.GeocodingApiService
+import com.zephyrus.app.data.remote.RainViewerApiService
 import com.zephyrus.app.data.remote.WeatherApiService
 import dagger.Module
 import dagger.Provides
@@ -74,6 +75,18 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @Named("rainviewer")
+    fun provideRainViewerRetrofit(json: Json, client: OkHttpClient): Retrofit {
+        val contentType = "application/json".toMediaType()
+        return Retrofit.Builder()
+            .baseUrl("https://api.rainviewer.com/")
+            .client(client)
+            .addConverterFactory(json.asConverterFactory(contentType))
+            .build()
+    }
+
+    @Provides
+    @Singleton
     fun provideWeatherApiService(@Named("weather") retrofit: Retrofit): WeatherApiService {
         return retrofit.create(WeatherApiService::class.java)
     }
@@ -88,5 +101,11 @@ object NetworkModule {
     @Singleton
     fun provideGeocodingApiService(@Named("geocoding") retrofit: Retrofit): GeocodingApiService {
         return retrofit.create(GeocodingApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideRainViewerApiService(@Named("rainviewer") retrofit: Retrofit): RainViewerApiService {
+        return retrofit.create(RainViewerApiService::class.java)
     }
 }

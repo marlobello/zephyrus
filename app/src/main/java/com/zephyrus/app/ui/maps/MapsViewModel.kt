@@ -3,6 +3,7 @@ package com.zephyrus.app.ui.maps
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zephyrus.app.data.local.UserPreferences
+import com.zephyrus.app.data.remote.RainViewerApiService
 import com.zephyrus.app.data.repository.WeatherRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -21,6 +22,7 @@ import kotlin.math.pow
 class MapsViewModel @Inject constructor(
     private val weatherRepository: WeatherRepository,
     private val userPreferences: UserPreferences,
+    private val rainViewerApi: RainViewerApiService,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapsUiState())
@@ -35,6 +37,24 @@ class MapsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferences.temperatureUnit.collect { unit ->
                 _uiState.update { it.copy(temperatureUnit = unit) }
+            }
+        }
+        fetchRadarTimestamp()
+    }
+
+    private fun fetchRadarTimestamp() {
+        viewModelScope.launch {
+            try {
+                val response = rainViewerApi.getWeatherMaps()
+                val latestFrame = response.radar.past.lastOrNull()
+                if (latestFrame != null) {
+                    Timber.d("RainViewer radar path: %s%s", response.host, latestFrame.path)
+                    _uiState.update {
+                        it.copy(radarHost = response.host, radarTilePath = latestFrame.path)
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to fetch RainViewer radar timestamp")
             }
         }
     }
@@ -96,14 +116,12 @@ class MapsViewModel @Inject constructor(
                     val temps = Array(rows) { r -> DoubleArray(cols) { c -> grid[r][c].temperature } }
                     val humidity = Array(rows) { r -> DoubleArray(cols) { c -> grid[r][c].humidity } }
                     val pressure = Array(rows) { r -> DoubleArray(cols) { c -> grid[r][c].pressure } }
-                    val precipitation = Array(rows) { r -> DoubleArray(cols) { c -> grid[r][c].precipitation } }
                     Timber.d("Grid data loaded: %dx%d", rows, cols)
                     _uiState.update {
                         it.copy(
                             gridTemperatures = temps,
                             gridHumidity = humidity,
                             gridPressure = pressure,
-                            gridPrecipitation = precipitation,
                             isLoading = false,
                         )
                     }
@@ -123,6 +141,7 @@ class MapsViewModel @Inject constructor(
 
     fun refresh() {
         weatherRepository.clearGridCache()
+        fetchRadarTimestamp()
         val prevZoom = lastFetchZoom
         lastFetchZoom = 0.0 // Force re-fetch
         val state = _uiState.value
