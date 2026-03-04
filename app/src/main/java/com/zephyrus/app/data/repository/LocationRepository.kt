@@ -23,9 +23,23 @@ class LocationRepository @Inject constructor(
     private val geocodingApi: GeocodingApiService,
     private val savedLocationDao: SavedLocationDao,
 ) {
+    // Cached device location — populated on first GPS request, reused for instant switching
+    @Volatile
+    private var cachedDeviceLocation: Location? = null
+
     @SuppressLint("MissingPermission")
-    suspend fun getDeviceLocation(): Result<Location> = runCatching {
-        Timber.d("Requesting device location")
+    suspend fun getDeviceLocation(): Result<Location> {
+        // Return cache if available
+        cachedDeviceLocation?.let { cached ->
+            Timber.d("Returning cached device location: (%.4f, %.4f)", cached.latitude, cached.longitude)
+            return Result.success(cached)
+        }
+        return refreshDeviceLocation()
+    }
+
+    @SuppressLint("MissingPermission")
+    suspend fun refreshDeviceLocation(): Result<Location> = runCatching {
+        Timber.d("Requesting fresh device location from GPS")
         val cancellationToken = CancellationTokenSource()
         try {
             val androidLocation = fusedLocationClient.getCurrentLocation(
@@ -40,7 +54,7 @@ class LocationRepository @Inject constructor(
                     latitude = androidLocation.latitude,
                     longitude = androidLocation.longitude,
                     isDeviceLocation = true,
-                )
+                ).also { cachedDeviceLocation = it }
             } else {
                 throw IllegalStateException("Unable to get device location")
             }
