@@ -57,6 +57,8 @@ fun AboutScreen(
                 modifier = Modifier.size(120.dp),
             )
 
+            Spacer(modifier = Modifier.height(32.dp))
+            
             Text(
                 text = "Zephyrus",
                 style = MaterialTheme.typography.headlineMedium,
