@@ -122,6 +122,7 @@ class MapsViewModel @Inject constructor(
     }
 
     fun refresh() {
+        weatherRepository.clearGridCache()
         val prevZoom = lastFetchZoom
         lastFetchZoom = 0.0 // Force re-fetch
         val state = _uiState.value

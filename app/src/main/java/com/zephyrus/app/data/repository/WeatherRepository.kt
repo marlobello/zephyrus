@@ -15,14 +15,31 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.roundToLong
 
 @Singleton
 class WeatherRepository @Inject constructor(
     private val weatherApi: WeatherApiService,
     private val airQualityApi: AirQualityApiService,
 ) {
+    // In-memory spatial cache for grid weather data, keyed by rounded lat/lon
+    private val gridCache = ConcurrentHashMap<Long, GridPointData>()
+
+    /** Rounds lat/lon to 0.05° precision and packs into a single Long key. */
+    private fun cacheKey(lat: Double, lon: Double): Long {
+        val rlat = (lat * 20).roundToLong()  // 0.05° buckets
+        val rlon = (lon * 20).roundToLong()
+        return rlat * 1_000_000L + rlon
+    }
+
+    fun clearGridCache() {
+        val size = gridCache.size
+        gridCache.clear()
+        Timber.d("Grid cache cleared (%d entries)", size)
+    }
     suspend fun getCurrentWeather(
         latitude: Double,
         longitude: Double,
@@ -135,53 +152,76 @@ class WeatherRepository @Inject constructor(
         centerLon: Double,
         unit: TemperatureUnit,
         gridSize: Int = 8,
-        radiusDegrees: Double = 4.3, // ~300 miles radius
+        radiusDegrees: Double = 4.3,
     ): Result<Array<Array<GridPointData>>> = runCatching {
-        Timber.d("Fetching %dx%d grid data around (%.4f, %.4f), radius=%.1f°",
-            gridSize, gridSize, centerLat, centerLon, radiusDegrees)
         val tempUnit = if (unit == TemperatureUnit.CELSIUS) "celsius" else "fahrenheit"
         val latStep = (2 * radiusDegrees) / (gridSize - 1)
         val lonStep = (2 * radiusDegrees) / (gridSize - 1)
         val startLat = centerLat + radiusDegrees
         val startLon = centerLon - radiusDegrees
 
+        // Build list of all grid points, checking cache first
+        data class GridRequest(val row: Int, val col: Int, val lat: Double, val lon: Double, val key: Long)
+
+        val cached = mutableListOf<Triple<Int, Int, GridPointData>>()
+        val uncached = mutableListOf<GridRequest>()
+
+        for (row in 0 until gridSize) {
+            for (col in 0 until gridSize) {
+                val lat = startLat - row * latStep
+                val lon = startLon + col * lonStep
+                val key = cacheKey(lat, lon)
+                val hit = gridCache[key]
+                if (hit != null) {
+                    cached.add(Triple(row, col, hit))
+                } else {
+                    uncached.add(GridRequest(row, col, lat, lon, key))
+                }
+            }
+        }
+
+        Timber.d("Grid %dx%d: %d cached, %d to fetch", gridSize, gridSize, cached.size, uncached.size)
+
         val semaphore = kotlinx.coroutines.sync.Semaphore(8)
 
-        coroutineScope {
-            val deferreds = (0 until gridSize).flatMap { row ->
-                (0 until gridSize).map { col ->
-                    val lat = startLat - row * latStep
-                    val lon = startLon + col * lonStep
+        val fetched = if (uncached.isNotEmpty()) {
+            coroutineScope {
+                uncached.map { req ->
                     async {
                         semaphore.withPermit {
-                            Triple(row, col, try {
+                            Triple(req.row, req.col, try {
                                 withRetry(maxRetries = 2, tag = "Grid") {
                                     val resp = weatherApi.getCurrentAndForecast(
-                                        latitude = lat,
-                                        longitude = lon,
+                                        latitude = req.lat,
+                                        longitude = req.lon,
                                         temperatureUnit = tempUnit,
                                         forecastDays = 1,
                                     )
-                                    GridPointData(
+                                    val data = GridPointData(
                                         temperature = resp.current?.temperature ?: 0.0,
                                         humidity = resp.current?.relativeHumidity?.toDouble() ?: 0.0,
                                         pressure = resp.current?.surfacePressure ?: 0.0,
                                         precipitation = resp.current?.precipitation ?: 0.0,
                                     )
+                                    gridCache[req.key] = data
+                                    data
                                 }
                             } catch (e: Exception) {
-                                Timber.w(e, "Grid fetch failed at (%.4f, %.4f)", lat, lon)
+                                Timber.w(e, "Grid fetch failed at (%.4f, %.4f)", req.lat, req.lon)
                                 GridPointData(0.0, 0.0, 0.0, 0.0)
                             })
                         }
                     }
-                }
+                }.awaitAll()
             }
-            val results = deferreds.awaitAll()
-            val grid = Array(gridSize) { Array(gridSize) { GridPointData(0.0, 0.0, 0.0, 0.0) } }
-            results.forEach { (row, col, data) -> grid[row][col] = data }
-            Timber.d("Grid data loaded: %d points fetched", results.size)
-            grid
+        } else {
+            emptyList()
         }
+
+        val grid = Array(gridSize) { Array(gridSize) { GridPointData(0.0, 0.0, 0.0, 0.0) } }
+        cached.forEach { (row, col, data) -> grid[row][col] = data }
+        fetched.forEach { (row, col, data) -> grid[row][col] = data }
+        Timber.d("Grid complete: %d from cache, %d freshly fetched", cached.size, fetched.size)
+        grid
     }.onFailure { Timber.e(it, "Failed to fetch grid weather data") }
 }
