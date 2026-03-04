@@ -80,8 +80,8 @@ fun SunArcCard(
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(130.dp)
-                .padding(12.dp),
+                .height(120.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             drawSunArc(
                 sunAngle = sunAngle,
@@ -120,10 +120,10 @@ private fun DrawScope.drawSunArc(
     val arcWidth = arcRight - arcLeft
     val centerX = arcLeft + arcWidth / 2f
     val arcRadiusX = arcWidth / 2f
-    val arcRadiusY = arcRadiusX * 0.30f
+    val arcRadiusY = arcRadiusX * 0.28f
 
     // Ellipse is always vertically centered in the canvas
-    val ellipseCenterY = height * 0.46f
+    val ellipseCenterY = height * 0.50f
 
     // Horizon shifts based on daylight fraction:
     // equinox (0.5) → horizon at ellipse center; summer → horizon lower; winter → horizon higher
@@ -246,7 +246,8 @@ private fun DrawScope.drawSunArc(
 
     // Current time label near sun
     val timeResult = textMeasurer.measure(currentTimeLabel, labelStyle)
-    val timeX = sunPos.x - timeResult.size.width / 2f
+    val timeX = (sunPos.x - timeResult.size.width / 2f)
+        .coerceIn(0f, width - timeResult.size.width)
     // Place label above the sun if sun is in lower half, below if in upper half
     val timeY = if (sunPos.y > ellipseCenterY) {
         sunPos.y - 18f - timeResult.size.height
