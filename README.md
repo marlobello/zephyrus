@@ -10,6 +10,16 @@ A modern, native Android weather app built with Kotlin and Jetpack Compose.
 
 In Greek mythology, **Zephyrus** (Ζέφυρος) is the god of the west wind — the gentlest and most favorable of the winds. Ancient Greeks associated Zephyrus with the arrival of spring and fair weather. This app carries his name as a nod to that connection between wind, weather, and the changing seasons.
 
+## Screenshots
+
+<p align="center">
+  <img src="current.png" alt="Current Conditions" width="250" />
+  &nbsp;&nbsp;
+  <img src="forecast.png" alt="10-Day Forecast" width="250" />
+  &nbsp;&nbsp;
+  <img src="radar.png" alt="Doppler Radar Map" width="250" />
+</p>
+
 ## Features
 
 - **Current Conditions** — Temperature, wind, humidity, pressure, UV index, precipitation, and descriptive weather indicators (sunny, cloudy, rain, snow, fog, etc.)
