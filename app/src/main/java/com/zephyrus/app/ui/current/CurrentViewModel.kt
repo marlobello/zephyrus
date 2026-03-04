@@ -138,28 +138,31 @@ class CurrentViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = !hasExistingData, error = null) }
             val unit = _uiState.value.temperatureUnit
 
-            weatherRepository.getCurrentWeather(latitude, longitude, unit)
-                .onSuccess { weather ->
-                    // Fetch moon phase separately (non-blocking for main weather)
-                    val moonPhase = weatherRepository.getMoonPhase()
+            // Single API call for current + hourly (air quality runs in parallel inside)
+            weatherRepository.getCurrentWithHourly(latitude, longitude, unit)
+                .onSuccess { (weather, hourly) ->
+                    lastRefreshTimeMs = System.currentTimeMillis()
                     _uiState.update {
-                        it.copy(currentWeather = weather.copy(moonPhase = moonPhase), error = null)
+                        it.copy(
+                            currentWeather = weather,
+                            hourlyForecast = hourly,
+                            isLoading = false,
+                            error = null,
+                        )
+                    }
+
+                    // Fetch moon phase in background — doesn't block weather display
+                    viewModelScope.launch {
+                        val moonPhase = weatherRepository.getMoonPhase()
+                        _uiState.update {
+                            it.copy(currentWeather = it.currentWeather?.copy(moonPhase = moonPhase))
+                        }
                     }
                 }
                 .onFailure { e ->
                     _uiState.update {
-                        it.copy(error = ErrorMessages.forWeather(e))
+                        it.copy(isLoading = false, error = ErrorMessages.forWeather(e))
                     }
-                }
-
-            weatherRepository.getHourlyForecast(latitude, longitude, unit)
-                .onSuccess { hourly ->
-                    lastRefreshTimeMs = System.currentTimeMillis()
-                    Timber.d("Weather data refreshed at %d", lastRefreshTimeMs)
-                    _uiState.update { it.copy(hourlyForecast = hourly, isLoading = false) }
-                }
-                .onFailure {
-                    _uiState.update { it.copy(isLoading = false) }
                 }
         }
     }

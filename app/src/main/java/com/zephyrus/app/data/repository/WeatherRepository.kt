@@ -167,6 +167,51 @@ class WeatherRepository @Inject constructor(
         }
     }
 
+    /**
+     * Combined fetch: one Open-Meteo call returns current weather + hourly forecast.
+     * Air quality runs in parallel. Eliminates the redundant second API call.
+     */
+    suspend fun getCurrentWithHourly(
+        latitude: Double,
+        longitude: Double,
+        unit: TemperatureUnit,
+    ): Result<Pair<CurrentWeather, List<HourlyForecast>>> = runCatching {
+        Timber.d("Fetching current + hourly for (%.4f, %.4f) in %s", latitude, longitude, unit)
+        val tempUnit = if (unit == TemperatureUnit.CELSIUS) "celsius" else "fahrenheit"
+
+        coroutineScope {
+            val weatherDeferred = async {
+                withRetry(tag = "CurrentWithHourly") {
+                    weatherApi.getCurrentAndForecast(
+                        latitude = latitude,
+                        longitude = longitude,
+                        temperatureUnit = tempUnit,
+                        forecastDays = 2,
+                    )
+                }
+            }
+            val airQualityDeferred = async {
+                try {
+                    withRetry(tag = "AirQuality") {
+                        airQualityApi.getAirQuality(latitude, longitude)
+                    }
+                } catch (e: Exception) {
+                    Timber.w(e, "Failed to fetch air quality data, continuing without pollen")
+                    null
+                }
+            }
+
+            val weatherResponse = weatherDeferred.await()
+            val airQualityResponse = airQualityDeferred.await()
+
+            val current = weatherResponse.toCurrentWeather(airQualityResponse)
+                ?: throw IllegalStateException("No current weather data in response")
+            val hourly = weatherResponse.hourly?.toHourlyForecasts() ?: emptyList()
+
+            Pair(current, hourly)
+        }
+    }.onFailure { Timber.e(it, "Failed to fetch current + hourly weather") }
+
     suspend fun getCurrentWeather(
         latitude: Double,
         longitude: Double,
