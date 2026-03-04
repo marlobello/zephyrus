@@ -11,6 +11,8 @@ data class CurrentWeather(
     val condition: WeatherCondition,
     val isDay: Boolean,
     val pollen: PollenData?,
+    val sunrise: String = "",
+    val sunset: String = "",
 )
 
 data class PollenData(
