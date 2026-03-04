@@ -47,6 +47,8 @@ All weather data is provided by [Open-Meteo](https://open-meteo.com/) — a free
 
 Radar imagery is provided by [RainViewer](https://www.rainviewer.com/) — a free radar data API with global Doppler radar coverage.
 
+Moon phase data is provided by the [U.S. Naval Observatory](https://aa.usno.navy.mil/) Astronomical Applications API — an authoritative source for lunar phase transition dates.
+
 Map tiles are provided by [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.
 
 ## AI-Assisted Development
