@@ -72,7 +72,7 @@ fun SunArcCard(
     val horizonColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
     val titleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val titleStyle = TextStyle(fontSize = 12.sp, color = titleColor)
+    val titleStyle = MaterialTheme.typography.labelMedium.copy(color = titleColor)
     val labelStyle = TextStyle(fontSize = 11.sp, color = labelColor)
     val textMeasurer = rememberTextMeasurer()
 
