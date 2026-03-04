@@ -11,12 +11,13 @@ import com.zephyrus.app.domain.model.DailyForecast
 import com.zephyrus.app.domain.model.HourlyForecast
 import com.zephyrus.app.domain.model.PollenData
 import com.zephyrus.app.domain.model.WeatherCondition
+import com.zephyrus.app.util.MoonPhaseCalculator
 
 fun WeatherResponse.toCurrentWeather(airQuality: AirQualityResponse?): CurrentWeather? {
     val c = current ?: return null
     val todaySunrise = daily?.sunrise?.firstOrNull() ?: ""
     val todaySunset = daily?.sunset?.firstOrNull() ?: ""
-    val todayMoonPhase = daily?.moonPhase?.firstOrNull() ?: 0.0
+    val todayMoonPhase = MoonPhaseCalculator.calculate()
     return c.toCurrentWeather(airQuality?.current, todaySunrise, todaySunset, timezone, todayMoonPhase)
 }
 

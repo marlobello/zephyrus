@@ -49,5 +49,4 @@ data class DailyData(
     @SerialName("uv_index_max") val uvIndexMax: List<Double>,
     val sunrise: List<String> = emptyList(),
     val sunset: List<String> = emptyList(),
-    @SerialName("moon_phase") val moonPhase: List<Double> = emptyList(),
 )

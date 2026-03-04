@@ -33,6 +33,6 @@ interface WeatherApiService {
             "temperature_2m_max,temperature_2m_min,weather_code," +
             "wind_speed_10m_max,wind_direction_10m_dominant," +
             "precipitation_probability_max,uv_index_max," +
-            "sunrise,sunset,moon_phase"
+            "sunrise,sunset"
     }
 }
