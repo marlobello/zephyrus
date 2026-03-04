@@ -1,5 +1,6 @@
 package com.zephyrus.app.data.repository
 
+import com.zephyrus.app.data.model.MoonPhaseEntry
 import com.zephyrus.app.data.remote.AirQualityApiService
 import com.zephyrus.app.data.remote.MoonPhaseApiService
 import com.zephyrus.app.data.remote.WeatherApiService
@@ -18,9 +19,14 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.cos
 import kotlin.math.roundToLong
 
 @Singleton
@@ -45,20 +51,94 @@ class WeatherRepository @Inject constructor(
         Timber.d("Grid cache cleared (%d entries)", size)
     }
 
+    // Cache USNO phase data per year
+    private val moonPhaseCache = ConcurrentHashMap<Int, List<MoonPhaseEntry>>()
+
     suspend fun getMoonPhase(): MoonPhaseData {
         return try {
-            val response = withRetry(tag = "MoonPhase") {
-                moonPhaseApi.getCurrentMoonPhase()
-            }
-            MoonPhaseData(
-                phaseName = response.phase,
-                illumination = response.illumination,
-                emoji = response.emoji,
-            )
+            val today = LocalDate.now()
+            val phases = getMoonPhaseEntries(today.year)
+            computeMoonPhase(today, phases)
         } catch (e: Exception) {
             Timber.w(e, "Moon phase API failed, using local calculation")
             MoonPhaseCalculator.toMoonPhaseData()
         }
+    }
+
+    private suspend fun getMoonPhaseEntries(year: Int): List<MoonPhaseEntry> {
+        moonPhaseCache[year]?.let { return it }
+        val response = withRetry(tag = "MoonPhase") {
+            moonPhaseApi.getPhasesByYear(year)
+        }
+        moonPhaseCache[year] = response.phasedata
+        return response.phasedata
+    }
+
+    private fun computeMoonPhase(today: LocalDate, phases: List<MoonPhaseEntry>): MoonPhaseData {
+        val phaseTimeFmt = DateTimeFormatter.ofPattern("HH:mm")
+        val phaseDates = phases.map { entry ->
+            val time = try {
+                java.time.LocalTime.parse(entry.time, phaseTimeFmt)
+            } catch (_: Exception) {
+                java.time.LocalTime.NOON
+            }
+            LocalDateTime.of(entry.year, entry.month, entry.day, time.hour, time.minute) to entry.phase
+        }
+
+        // Find the most recent phase transition at or before today
+        val todayEnd = today.atTime(23, 59)
+        val pastPhases = phaseDates.filter { !it.first.isAfter(todayEnd) }
+        val prev = pastPhases.lastOrNull()
+        val nextIdx = if (pastPhases.isNotEmpty()) phaseDates.indexOf(pastPhases.last()) + 1 else 0
+        val next = phaseDates.getOrNull(nextIdx)
+
+        if (prev == null || next == null) {
+            return MoonPhaseCalculator.toMoonPhaseData()
+        }
+
+        val prevPhase = prev.second
+        val daysSincePrev = ChronoUnit.HOURS.between(prev.first, today.atTime(12, 0)).toDouble() / 24.0
+        val totalDays = ChronoUnit.HOURS.between(prev.first, next.first).toDouble() / 24.0
+        val fraction = if (totalDays > 0) (daysSincePrev / totalDays).coerceIn(0.0, 1.0) else 0.0
+
+        // Determine phase name based on where we are between transitions
+        val phaseName = when (prevPhase) {
+            "New Moon" -> if (fraction < 0.1) "New Moon" else "Waxing Crescent"
+            "First Quarter" -> if (fraction < 0.1) "First Quarter" else "Waxing Gibbous"
+            "Full Moon" -> if (fraction < 0.1) "Full Moon" else "Waning Gibbous"
+            "Last Quarter" -> if (fraction < 0.1) "Last Quarter" else "Waning Crescent"
+            else -> "Unknown"
+        }
+
+        // Compute illumination using cosine interpolation
+        // Map cycle position: New=0, FQ=0.25, Full=0.5, LQ=0.75
+        val prevPos = when (prevPhase) {
+            "New Moon" -> 0.0
+            "First Quarter" -> 0.25
+            "Full Moon" -> 0.5
+            "Last Quarter" -> 0.75
+            else -> 0.0
+        }
+        val cyclePos = prevPos + fraction * 0.25 // each transition spans 0.25 of cycle
+        val illumination = ((1.0 - cos(2.0 * Math.PI * cyclePos)) / 2.0 * 100.0)
+
+        val emoji = when {
+            phaseName.contains("New") -> "🌑"
+            phaseName == "Waxing Crescent" -> "🌒"
+            phaseName.contains("First") -> "🌓"
+            phaseName == "Waxing Gibbous" -> "🌔"
+            phaseName.contains("Full") -> "🌕"
+            phaseName == "Waning Gibbous" -> "🌖"
+            phaseName.contains("Last") -> "🌗"
+            phaseName == "Waning Crescent" -> "🌘"
+            else -> "🌑"
+        }
+
+        return MoonPhaseData(
+            phaseName = phaseName,
+            illumination = illumination,
+            emoji = emoji,
+        )
     }
     suspend fun getCurrentWeather(
         latitude: Double,

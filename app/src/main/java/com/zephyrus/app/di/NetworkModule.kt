@@ -92,7 +92,7 @@ object NetworkModule {
     fun provideMoonPhaseRetrofit(json: Json, client: OkHttpClient): Retrofit {
         val contentType = "application/json".toMediaType()
         return Retrofit.Builder()
-            .baseUrl("https://api.phaseofthemoontoday.com/")
+            .baseUrl("https://aa.usno.navy.mil/")
             .client(client)
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()
