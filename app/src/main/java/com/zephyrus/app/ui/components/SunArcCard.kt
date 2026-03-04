@@ -2,7 +2,6 @@ package com.zephyrus.app.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,41 +28,46 @@ import androidx.compose.ui.unit.sp
 import com.zephyrus.app.domain.model.ClockFormat
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
+private val DAY_COLOR = Color(0xFFFFC107)
+private val NIGHT_COLOR = Color(0xFF78909C)
+
 /**
- * A card displaying sunrise and sunset times with a semicircular sun arc.
- * The sun's position along the arc indicates the current time of day.
- * Before sunrise and after sunset, the sun sits at the respective endpoint.
+ * A card displaying sunrise and sunset with a full day/night elliptical arc.
+ * The upper arc (above the horizon) represents daytime, the lower arc nighttime.
+ * The sun's position is calculated using the viewed location's timezone.
  */
 @Composable
 fun SunArcCard(
     sunrise: String,
     sunset: String,
+    timezone: String,
     clockFormat: ClockFormat,
     modifier: Modifier = Modifier,
 ) {
     val sunriseTime = parseSunTime(sunrise) ?: return
     val sunsetTime = parseSunTime(sunset) ?: return
-    val now = LocalTime.now()
+
+    // Get current time in the viewed location's timezone
+    val locationNow = try {
+        ZonedDateTime.now(ZoneId.of(timezone)).toLocalTime()
+    } catch (_: Exception) {
+        LocalTime.now()
+    }
 
     val sunriseLabel = formatSunTime(sunriseTime, clockFormat)
     val sunsetLabel = formatSunTime(sunsetTime, clockFormat)
 
-    // Progress: 0 = sunrise, 1 = sunset
-    val progress = calculateSunProgress(now, sunriseTime, sunsetTime)
-    val isDaytime = now.isAfter(sunriseTime) && now.isBefore(sunsetTime)
+    val isDaytime = locationNow.isAfter(sunriseTime) && locationNow.isBefore(sunsetTime)
+    val sunPosition = calculateSunAngle(locationNow, sunriseTime, sunsetTime)
 
-    val arcColor = if (isDaytime) {
-        Color(0xFFFFC107) // amber/golden
-    } else {
-        Color(0xFF78909C) // blue-grey for night
-    }
     val horizonColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-    val sunColor = if (isDaytime) Color(0xFFFFC107) else Color(0xFF78909C)
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
     val labelStyle = TextStyle(fontSize = 11.sp, color = labelColor)
     val textMeasurer = rememberTextMeasurer()
@@ -85,13 +89,12 @@ fun SunArcCard(
             Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(100.dp),
+                    .height(120.dp),
             ) {
                 drawSunArc(
-                    progress = progress,
-                    arcColor = arcColor,
+                    sunAngle = sunPosition,
+                    isDaytime = isDaytime,
                     horizonColor = horizonColor,
-                    sunColor = sunColor,
                     sunriseLabel = sunriseLabel,
                     sunsetLabel = sunsetLabel,
                     labelStyle = labelStyle,
@@ -103,10 +106,9 @@ fun SunArcCard(
 }
 
 private fun DrawScope.drawSunArc(
-    progress: Float,
-    arcColor: Color,
+    sunAngle: Float,
+    isDaytime: Boolean,
     horizonColor: Color,
-    sunColor: Color,
     sunriseLabel: String,
     sunsetLabel: String,
     labelStyle: TextStyle,
@@ -120,11 +122,10 @@ private fun DrawScope.drawSunArc(
     val arcRight = width - hPadding
     val arcWidth = arcRight - arcLeft
     val centerX = arcLeft + arcWidth / 2f
-    // Horizon sits about 70% down the canvas to leave room for the arc above
-    val horizonY = height * 0.72f
+    val horizonY = height * 0.45f
     val arcRadiusX = arcWidth / 2f
-    // Flatten the arc to ~60% of a full semicircle for a more compact look
-    val arcRadiusY = arcRadiusX * 0.38f
+    val dayArcRadiusY = arcRadiusX * 0.35f
+    val nightArcRadiusY = arcRadiusX * 0.22f
 
     // Draw dashed horizon line
     drawLine(
@@ -135,61 +136,107 @@ private fun DrawScope.drawSunArc(
         pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f)),
     )
 
-    // Draw the semicircular arc (sunrise left to sunset right)
-    val arcPath = Path()
+    // Draw daytime arc (upper, left to right)
+    val dayPath = Path()
     val steps = 60
     for (i in 0..steps) {
         val t = i.toFloat() / steps
-        val angle = PI.toFloat() * (1f - t) // PI (left) to 0 (right)
+        val angle = PI.toFloat() * (1f - t)
         val x = centerX + arcRadiusX * cos(angle)
-        val y = horizonY - arcRadiusY * sin(angle)
-        if (i == 0) arcPath.moveTo(x, y) else arcPath.lineTo(x, y)
+        val y = horizonY - dayArcRadiusY * sin(angle)
+        if (i == 0) dayPath.moveTo(x, y) else dayPath.lineTo(x, y)
     }
     drawPath(
-        path = arcPath,
-        color = arcColor.copy(alpha = 0.4f),
+        path = dayPath,
+        color = DAY_COLOR.copy(alpha = 0.3f),
         style = Stroke(width = 3f, cap = StrokeCap.Round),
     )
 
-    // Draw the "traveled" portion of the arc (solid) up to current sun position
-    if (progress > 0f) {
+    // Draw nighttime arc (lower, right to left)
+    val nightPath = Path()
+    for (i in 0..steps) {
+        val t = i.toFloat() / steps
+        val angle = -PI.toFloat() * t // 0 to -π (right to left, below horizon)
+        val x = centerX + arcRadiusX * cos(angle)
+        val y = horizonY - nightArcRadiusY * sin(angle) // sin is negative → below horizon
+        if (i == 0) nightPath.moveTo(x, y) else nightPath.lineTo(x, y)
+    }
+    drawPath(
+        path = nightPath,
+        color = NIGHT_COLOR.copy(alpha = 0.2f),
+        style = Stroke(width = 2f, cap = StrokeCap.Round),
+    )
+
+    // Draw traveled portion — solid arc up to current sun position
+    val sunX: Float
+    val sunY: Float
+    val sunColor: Color
+
+    if (sunAngle >= 0f) {
+        // Daytime: angle is in [0, π]
+        sunColor = DAY_COLOR
+        sunX = centerX + arcRadiusX * cos(sunAngle)
+        sunY = horizonY - dayArcRadiusY * sin(sunAngle)
+
+        // Draw solid traveled day arc from sunrise (π) to current angle
         val traveledPath = Path()
-        val travelSteps = (steps * progress.coerceIn(0f, 1f)).toInt()
+        val travelSteps = ((PI.toFloat() - sunAngle) / PI.toFloat() * steps).toInt()
         for (i in 0..travelSteps) {
             val t = i.toFloat() / steps
-            val angle = PI.toFloat() * (1f - t)
-            val x = centerX + arcRadiusX * cos(angle)
-            val y = horizonY - arcRadiusY * sin(angle)
+            val a = PI.toFloat() * (1f - t)
+            val x = centerX + arcRadiusX * cos(a)
+            val y = horizonY - dayArcRadiusY * sin(a)
             if (i == 0) traveledPath.moveTo(x, y) else traveledPath.lineTo(x, y)
         }
         drawPath(
             path = traveledPath,
-            color = arcColor,
+            color = DAY_COLOR,
             style = Stroke(width = 3f, cap = StrokeCap.Round),
+        )
+    } else {
+        // Nighttime: angle is in [-π, 0]
+        sunColor = NIGHT_COLOR
+        sunX = centerX + arcRadiusX * cos(sunAngle)
+        sunY = horizonY - nightArcRadiusY * sin(sunAngle)
+
+        // Full day arc is traveled (solid)
+        drawPath(
+            path = dayPath,
+            color = DAY_COLOR.copy(alpha = 0.5f),
+            style = Stroke(width = 3f, cap = StrokeCap.Round),
+        )
+
+        // Draw solid traveled night arc from sunset (0) to current angle
+        val nightProgress = -sunAngle / PI.toFloat()
+        val travelSteps = (nightProgress * steps).toInt()
+        val traveledNight = Path()
+        for (i in 0..travelSteps) {
+            val t = i.toFloat() / steps
+            val a = -PI.toFloat() * t
+            val x = centerX + arcRadiusX * cos(a)
+            val y = horizonY - nightArcRadiusY * sin(a)
+            if (i == 0) traveledNight.moveTo(x, y) else traveledNight.lineTo(x, y)
+        }
+        drawPath(
+            path = traveledNight,
+            color = NIGHT_COLOR,
+            style = Stroke(width = 2f, cap = StrokeCap.Round),
         )
     }
 
-    // Draw sun circle at current position
-    val sunT = progress.coerceIn(0f, 1f)
-    val sunAngle = PI.toFloat() * (1f - sunT)
-    val sunX = centerX + arcRadiusX * cos(sunAngle)
-    val sunY = horizonY - arcRadiusY * sin(sunAngle)
-
-    // Outer glow
+    // Draw sun circle
     drawCircle(color = sunColor.copy(alpha = 0.2f), radius = 18f, center = Offset(sunX, sunY))
-    // Sun dot
     drawCircle(color = sunColor, radius = 11f, center = Offset(sunX, sunY))
-    // Inner highlight
     drawCircle(color = Color.White.copy(alpha = 0.6f), radius = 5f, center = Offset(sunX, sunY))
 
-    // Draw sunrise label (bottom-left)
+    // Sunrise label (bottom-left of horizon)
     val sunriseResult = textMeasurer.measure(sunriseLabel, labelStyle)
     drawText(
         textLayoutResult = sunriseResult,
         topLeft = Offset(arcLeft, horizonY + 6f),
     )
 
-    // Draw sunset label (bottom-right)
+    // Sunset label (bottom-right of horizon)
     val sunsetResult = textMeasurer.measure(sunsetLabel, labelStyle)
     drawText(
         textLayoutResult = sunsetResult,
@@ -200,7 +247,6 @@ private fun DrawScope.drawSunArc(
 private fun parseSunTime(isoTime: String): LocalTime? {
     if (isoTime.isBlank()) return null
     return try {
-        // Open-Meteo returns "2024-03-04T06:23" format
         LocalDateTime.parse(isoTime, DateTimeFormatter.ISO_LOCAL_DATE_TIME).toLocalTime()
     } catch (_: Exception) {
         null
@@ -216,11 +262,36 @@ private fun formatSunTime(time: LocalTime, clockFormat: ClockFormat): String {
     return time.format(formatter)
 }
 
-private fun calculateSunProgress(now: LocalTime, sunrise: LocalTime, sunset: LocalTime): Float {
-    if (now.isBefore(sunrise)) return 0f
-    if (now.isAfter(sunset)) return 1f
-    val totalMinutes = (sunset.toSecondOfDay() - sunrise.toSecondOfDay()).toFloat()
-    if (totalMinutes <= 0) return 0.5f
-    val elapsed = (now.toSecondOfDay() - sunrise.toSecondOfDay()).toFloat()
-    return (elapsed / totalMinutes).coerceIn(0f, 1f)
+/**
+ * Calculate the sun's angle on the day/night ellipse.
+ * Returns a value in [−π, π]:
+ *   π = sunrise (left horizon), 0 = sunset (right horizon)
+ *   Positive = daytime (above horizon), Negative = nighttime (below horizon)
+ */
+private fun calculateSunAngle(now: LocalTime, sunrise: LocalTime, sunset: LocalTime): Float {
+    val nowSec = now.toSecondOfDay()
+    val riseSec = sunrise.toSecondOfDay()
+    val setSec = sunset.toSecondOfDay()
+    val dayDuration = setSec - riseSec
+
+    if (dayDuration <= 0) return 0f
+
+    return when {
+        // Daytime: map sunrise→sunset to angle π→0
+        nowSec in riseSec..setSec -> {
+            val progress = (nowSec - riseSec).toFloat() / dayDuration
+            PI.toFloat() * (1f - progress)
+        }
+        // Night after sunset: map sunset→midnight→sunrise to angle 0→−π
+        else -> {
+            val nightDuration = 24 * 3600 - dayDuration
+            val elapsed = if (nowSec >= setSec) {
+                nowSec - setSec
+            } else {
+                (24 * 3600 - setSec) + nowSec
+            }
+            val nightProgress = elapsed.toFloat() / nightDuration
+            -PI.toFloat() * nightProgress
+        }
+    }
 }
