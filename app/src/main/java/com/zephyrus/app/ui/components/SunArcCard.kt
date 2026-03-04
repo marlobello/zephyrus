@@ -122,7 +122,9 @@ private fun DrawScope.drawSunArc(
     val centerX = arcLeft + arcWidth / 2f
     // Horizon sits about 70% down the canvas to leave room for the arc above
     val horizonY = height * 0.72f
-    val arcRadius = arcWidth / 2f
+    val arcRadiusX = arcWidth / 2f
+    // Flatten the arc to ~60% of a full semicircle for a more compact look
+    val arcRadiusY = arcRadiusX * 0.55f
 
     // Draw dashed horizon line
     drawLine(
@@ -139,8 +141,8 @@ private fun DrawScope.drawSunArc(
     for (i in 0..steps) {
         val t = i.toFloat() / steps
         val angle = PI.toFloat() * (1f - t) // PI (left) to 0 (right)
-        val x = centerX + arcRadius * cos(angle)
-        val y = horizonY - arcRadius * sin(angle)
+        val x = centerX + arcRadiusX * cos(angle)
+        val y = horizonY - arcRadiusY * sin(angle)
         if (i == 0) arcPath.moveTo(x, y) else arcPath.lineTo(x, y)
     }
     drawPath(
@@ -156,8 +158,8 @@ private fun DrawScope.drawSunArc(
         for (i in 0..travelSteps) {
             val t = i.toFloat() / steps
             val angle = PI.toFloat() * (1f - t)
-            val x = centerX + arcRadius * cos(angle)
-            val y = horizonY - arcRadius * sin(angle)
+            val x = centerX + arcRadiusX * cos(angle)
+            val y = horizonY - arcRadiusY * sin(angle)
             if (i == 0) traveledPath.moveTo(x, y) else traveledPath.lineTo(x, y)
         }
         drawPath(
@@ -170,8 +172,8 @@ private fun DrawScope.drawSunArc(
     // Draw sun circle at current position
     val sunT = progress.coerceIn(0f, 1f)
     val sunAngle = PI.toFloat() * (1f - sunT)
-    val sunX = centerX + arcRadius * cos(sunAngle)
-    val sunY = horizonY - arcRadius * sin(sunAngle)
+    val sunX = centerX + arcRadiusX * cos(sunAngle)
+    val sunY = horizonY - arcRadiusY * sin(sunAngle)
 
     // Outer glow
     drawCircle(color = sunColor.copy(alpha = 0.2f), radius = 14f, center = Offset(sunX, sunY))
