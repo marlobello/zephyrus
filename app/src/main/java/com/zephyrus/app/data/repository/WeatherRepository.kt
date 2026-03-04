@@ -97,7 +97,9 @@ class WeatherRepository @Inject constructor(
         }
 
         val prevPhase = prev.second
-        val daysSincePrev = ChronoUnit.HOURS.between(prev.first, today.atTime(12, 0)).toDouble() / 24.0
+        // Calculate based on tonight (9 PM) rather than start of day
+        val tonight = today.atTime(21, 0)
+        val daysSincePrev = ChronoUnit.HOURS.between(prev.first, tonight).toDouble() / 24.0
         val totalDays = ChronoUnit.HOURS.between(prev.first, next.first).toDouble() / 24.0
         val fraction = if (totalDays > 0) (daysSincePrev / totalDays).coerceIn(0.0, 1.0) else 0.0
 
