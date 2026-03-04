@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zephyrus.app.domain.model.CardinalDirection
@@ -241,19 +242,23 @@ private fun WeatherContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            DetailCard("Wind", "${weather.windSpeed.toInt()} mph", Modifier.weight(1f))
-            WindDirectionCard(
-                degrees = weather.windDirection,
+            WindCard(
+                speed = weather.windSpeed,
+                direction = weather.windDirection,
                 modifier = Modifier.weight(1f),
             )
+            DetailCard("Humidity", "${weather.humidity}%", Modifier.weight(1f))
         }
         Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            DetailCard("Humidity", "${weather.humidity}%", Modifier.weight(1f))
             DetailCard("Pressure", "${weather.pressure.toInt()} hPa", Modifier.weight(1f))
+            MoonPhaseCard(
+                phase = weather.moonPhase,
+                modifier = Modifier.weight(1f),
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
         Row(
@@ -321,8 +326,8 @@ private fun DetailCard(label: String, value: String, modifier: Modifier = Modifi
 }
 
 @Composable
-private fun WindDirectionCard(degrees: Int, modifier: Modifier = Modifier) {
-    val cardinal = CardinalDirection.fromDegrees(degrees)
+private fun WindCard(speed: Double, direction: Int, modifier: Modifier = Modifier) {
+    val cardinal = CardinalDirection.fromDegrees(direction)
     Card(modifier = modifier) {
         Column(
             modifier = Modifier
@@ -331,7 +336,7 @@ private fun WindDirectionCard(degrees: Int, modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "Wind Direction",
+                text = "Wind",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -344,16 +349,82 @@ private fun WindDirectionCard(degrees: Int, modifier: Modifier = Modifier) {
                     imageVector = Icons.Filled.Navigation,
                     contentDescription = "Wind from ${cardinal.label}",
                     modifier = Modifier
-                        .size(24.dp)
-                        .rotate(degrees.toFloat()),
+                        .size(20.dp)
+                        .rotate(direction.toFloat()),
                     tint = MaterialTheme.colorScheme.primary,
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = cardinal.label,
+                    text = "${cardinal.label} ${speed.toInt()} mph",
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
         }
     }
+}
+
+@Composable
+private fun MoonPhaseCard(phase: Double, modifier: Modifier = Modifier) {
+    val glyph = moonGlyph(phase)
+    val name = moonPhaseName(phase)
+    val illumination = moonIllumination(phase)
+
+    Card(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "Moon Phase",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = glyph,
+                fontSize = 28.sp,
+            )
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                text = "${illumination}% illuminated",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun moonGlyph(phase: Double): String = when {
+    phase < 0.0625 -> "🌑"  // New Moon
+    phase < 0.1875 -> "🌒"  // Waxing Crescent
+    phase < 0.3125 -> "🌓"  // First Quarter
+    phase < 0.4375 -> "🌔"  // Waxing Gibbous
+    phase < 0.5625 -> "🌕"  // Full Moon
+    phase < 0.6875 -> "🌖"  // Waning Gibbous
+    phase < 0.8125 -> "🌗"  // Last Quarter
+    phase < 0.9375 -> "🌘"  // Waning Crescent
+    else -> "🌑"            // New Moon (wraps)
+}
+
+private fun moonPhaseName(phase: Double): String = when {
+    phase < 0.0625 -> "New Moon"
+    phase < 0.1875 -> "Waxing Crescent"
+    phase < 0.3125 -> "First Quarter"
+    phase < 0.4375 -> "Waxing Gibbous"
+    phase < 0.5625 -> "Full Moon"
+    phase < 0.6875 -> "Waning Gibbous"
+    phase < 0.8125 -> "Last Quarter"
+    phase < 0.9375 -> "Waning Crescent"
+    else -> "New Moon"
+}
+
+private fun moonIllumination(phase: Double): Int {
+    // 0 and 1 = new moon (0%), 0.5 = full moon (100%)
+    val illumination = (1.0 - kotlin.math.abs(2.0 * phase - 1.0)) * 100.0
+    return illumination.toInt()
 }
