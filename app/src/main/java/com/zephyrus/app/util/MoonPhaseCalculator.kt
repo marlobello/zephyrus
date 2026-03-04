@@ -14,7 +14,7 @@ object MoonPhaseCalculator {
     private const val LUNAR_CYCLE_DAYS = 29.53058770576
     private val KNOWN_NEW_MOON: LocalDate = LocalDate.of(2000, 1, 6)
 
-    fun calculate(date: LocalDate = LocalDate.now()): Double {
+    private fun calculate(date: LocalDate = LocalDate.now()): Double {
         val daysSince = ChronoUnit.DAYS.between(KNOWN_NEW_MOON, date).toDouble()
         val phase = (daysSince % LUNAR_CYCLE_DAYS) / LUNAR_CYCLE_DAYS
         return if (phase < 0) phase + 1.0 else phase
