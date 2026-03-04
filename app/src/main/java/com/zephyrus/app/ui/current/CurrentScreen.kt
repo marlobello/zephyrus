@@ -43,6 +43,7 @@ import com.zephyrus.app.domain.model.CurrentWeather
 import com.zephyrus.app.domain.model.HourlyForecast
 import com.zephyrus.app.domain.model.TemperatureUnit
 import com.zephyrus.app.ui.components.HourlyForecastRow
+import com.zephyrus.app.ui.components.SunArcCard
 import com.zephyrus.app.ui.components.ZephyrusTopAppBar
 import com.zephyrus.app.util.WeatherIcons
 import java.time.LocalDateTime
@@ -265,6 +266,17 @@ private fun WeatherContent(
                 Modifier.weight(1f),
             )
             DetailCard("UV Index", "%.1f".format(weather.uvIndex), Modifier.weight(1f))
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Sunrise & Sunset arc
+        if (weather.sunrise.isNotEmpty() && weather.sunset.isNotEmpty()) {
+            SunArcCard(
+                sunrise = weather.sunrise,
+                sunset = weather.sunset,
+                clockFormat = clockFormat,
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))

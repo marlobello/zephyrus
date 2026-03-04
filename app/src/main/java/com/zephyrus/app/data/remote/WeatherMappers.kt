@@ -14,10 +14,16 @@ import com.zephyrus.app.domain.model.WeatherCondition
 
 fun WeatherResponse.toCurrentWeather(airQuality: AirQualityResponse?): CurrentWeather? {
     val c = current ?: return null
-    return c.toCurrentWeather(airQuality?.current)
+    val todaySunrise = daily?.sunrise?.firstOrNull() ?: ""
+    val todaySunset = daily?.sunset?.firstOrNull() ?: ""
+    return c.toCurrentWeather(airQuality?.current, todaySunrise, todaySunset)
 }
 
-fun CurrentData.toCurrentWeather(pollen: CurrentAirQuality?): CurrentWeather {
+fun CurrentData.toCurrentWeather(
+    pollen: CurrentAirQuality?,
+    sunrise: String = "",
+    sunset: String = "",
+): CurrentWeather {
     return CurrentWeather(
         temperature = temperature,
         feelsLike = apparentTemperature,
@@ -29,6 +35,8 @@ fun CurrentData.toCurrentWeather(pollen: CurrentAirQuality?): CurrentWeather {
         condition = WeatherCondition.fromWmoCode(weatherCode),
         isDay = isDay == 1,
         pollen = pollen?.toPollenData(),
+        sunrise = sunrise,
+        sunset = sunset,
     )
 }
 
