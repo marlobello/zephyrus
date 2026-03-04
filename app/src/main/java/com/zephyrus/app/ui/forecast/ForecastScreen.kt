@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zephyrus.app.domain.model.ClockFormat
@@ -142,6 +143,7 @@ fun ForecastScreen(
                     ) {
                         itemsIndexed(forecasts) { index, day ->
                         val hourlyData = uiState.hourlyByDate[day.date] ?: emptyList()
+                        val moonEmoji = uiState.moonPhaseEvents[day.date]
                         DailyForecastCard(
                             day = day,
                             unit = uiState.temperatureUnit,
@@ -150,6 +152,7 @@ fun ForecastScreen(
                             isExpanded = expandedIndex == index,
                             hourlyData = hourlyData,
                             clockFormat = uiState.clockFormat,
+                            moonEmoji = moonEmoji,
                             onClick = {
                                 expandedIndex = if (expandedIndex == index) -1 else index
                             },
@@ -187,6 +190,7 @@ private fun DailyForecastCard(
     isExpanded: Boolean,
     hourlyData: List<HourlyForecast>,
     clockFormat: ClockFormat,
+    moonEmoji: String? = null,
     onClick: () -> Unit,
 ) {
     Card(
@@ -199,7 +203,7 @@ private fun DailyForecastCard(
                 .fillMaxWidth()
                 .padding(12.dp),
         ) {
-            // Top row: date, icon, condition, details
+            // Top row: date, icon, condition, moon glyph, details
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -217,7 +221,7 @@ private fun DailyForecastCard(
                     tint = MaterialTheme.colorScheme.primary,
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
                 Text(
                     text = day.condition.description,
@@ -225,6 +229,14 @@ private fun DailyForecastCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
+
+                if (moonEmoji != null) {
+                    Text(
+                        text = moonEmoji,
+                        fontSize = 18.sp,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                }
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(

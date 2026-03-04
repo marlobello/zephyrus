@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.time.LocalDate
 import javax.inject.Inject
 
 @HiltViewModel
@@ -50,10 +51,12 @@ class ForecastViewModel @Inject constructor(
             weatherRepository.getDailyWithHourlyForecast(latitude, longitude, unit)
                 .onSuccess { (daily, hourly) ->
                     val hourlyByDate = hourly.groupBy { it.time.substringBefore("T") }
+                    val moonEvents = weatherRepository.getMoonPhaseEvents(LocalDate.now().year)
                     _uiState.update {
                         it.copy(
                             dailyForecast = daily,
                             hourlyByDate = hourlyByDate,
+                            moonPhaseEvents = moonEvents,
                             isLoading = false,
                             error = null,
                         )

@@ -10,6 +10,7 @@ data class ForecastUiState(
     val error: String? = null,
     val dailyForecast: List<DailyForecast> = emptyList(),
     val hourlyByDate: Map<String, List<HourlyForecast>> = emptyMap(),
+    val moonPhaseEvents: Map<String, String> = emptyMap(),
     val temperatureUnit: TemperatureUnit = TemperatureUnit.FAHRENHEIT,
     val clockFormat: ClockFormat = ClockFormat.TWELVE_HOUR,
 )

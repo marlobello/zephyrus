@@ -140,6 +140,31 @@ class WeatherRepository @Inject constructor(
             emoji = emoji,
         )
     }
+
+    /**
+     * Returns a map of ISO date strings to moon phase emojis for primary phase transitions.
+     * Only includes New Moon, First Quarter, Full Moon, and Last Quarter dates.
+     */
+    suspend fun getMoonPhaseEvents(year: Int): Map<String, String> {
+        return try {
+            val phases = getMoonPhaseEntries(year)
+            phases.associate { entry ->
+                val date = LocalDate.of(entry.year, entry.month, entry.day)
+                val emoji = when (entry.phase) {
+                    "New Moon" -> "🌑"
+                    "First Quarter" -> "🌓"
+                    "Full Moon" -> "🌕"
+                    "Last Quarter" -> "🌗"
+                    else -> ""
+                }
+                date.toString() to emoji
+            }.filterValues { it.isNotEmpty() }
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to fetch moon phase events")
+            emptyMap()
+        }
+    }
+
     suspend fun getCurrentWeather(
         latitude: Double,
         longitude: Double,
