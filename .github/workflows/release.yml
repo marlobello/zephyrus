@@ -84,3 +84,7 @@ jobs:
           name: Zephyrus v${{ inputs.version }}
           generate_release_notes: true
           files: ${{ steps.apk.outputs.path }}
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f ${{ github.workspace }}/release.keystore
