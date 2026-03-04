@@ -42,6 +42,7 @@ import com.zephyrus.app.domain.model.CardinalDirection
 import com.zephyrus.app.domain.model.ClockFormat
 import com.zephyrus.app.domain.model.CurrentWeather
 import com.zephyrus.app.domain.model.HourlyForecast
+import com.zephyrus.app.domain.model.MoonPhaseData
 import com.zephyrus.app.domain.model.TemperatureUnit
 import com.zephyrus.app.ui.components.HourlyForecastRow
 import com.zephyrus.app.ui.components.SunArcCard
@@ -256,7 +257,7 @@ private fun WeatherContent(
         ) {
             DetailCard("Pressure", "${weather.pressure.toInt()} hPa", Modifier.weight(1f))
             MoonPhaseCard(
-                phase = weather.moonPhase,
+                moonPhase = weather.moonPhase,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -364,11 +365,7 @@ private fun WindCard(speed: Double, direction: Int, modifier: Modifier = Modifie
 }
 
 @Composable
-private fun MoonPhaseCard(phase: Double, modifier: Modifier = Modifier) {
-    val glyph = moonGlyph(phase)
-    val name = moonPhaseName(phase)
-    val illumination = moonIllumination(phase)
-
+private fun MoonPhaseCard(moonPhase: MoonPhaseData?, modifier: Modifier = Modifier) {
     Card(modifier = modifier) {
         Column(
             modifier = Modifier
@@ -383,48 +380,17 @@ private fun MoonPhaseCard(phase: Double, modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = glyph,
+                text = moonPhase?.emoji ?: "🌑",
                 fontSize = 28.sp,
             )
             Text(
-                text = name,
-                style = MaterialTheme.typography.bodySmall,
+                text = "${moonPhase?.illumination?.toInt() ?: 0}%",
+                style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                text = "${illumination}% illuminated",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = moonPhase?.phaseName ?: "Unknown",
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }
-}
-
-private fun moonGlyph(phase: Double): String = when {
-    phase < 0.0625 -> "🌑"  // New Moon
-    phase < 0.1875 -> "🌒"  // Waxing Crescent
-    phase < 0.3125 -> "🌓"  // First Quarter
-    phase < 0.4375 -> "🌔"  // Waxing Gibbous
-    phase < 0.5625 -> "🌕"  // Full Moon
-    phase < 0.6875 -> "🌖"  // Waning Gibbous
-    phase < 0.8125 -> "🌗"  // Last Quarter
-    phase < 0.9375 -> "🌘"  // Waning Crescent
-    else -> "🌑"            // New Moon (wraps)
-}
-
-private fun moonPhaseName(phase: Double): String = when {
-    phase < 0.0625 -> "New Moon"
-    phase < 0.1875 -> "Waxing Crescent"
-    phase < 0.3125 -> "First Quarter"
-    phase < 0.4375 -> "Waxing Gibbous"
-    phase < 0.5625 -> "Full Moon"
-    phase < 0.6875 -> "Waning Gibbous"
-    phase < 0.8125 -> "Last Quarter"
-    phase < 0.9375 -> "Waning Crescent"
-    else -> "New Moon"
-}
-
-private fun moonIllumination(phase: Double): Int {
-    // 0 and 1 = new moon (0%), 0.5 = full moon (100%)
-    val illumination = (1.0 - kotlin.math.abs(2.0 * phase - 1.0)) * 100.0
-    return illumination.toInt()
 }

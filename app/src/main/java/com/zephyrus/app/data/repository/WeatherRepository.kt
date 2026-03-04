@@ -1,6 +1,7 @@
 package com.zephyrus.app.data.repository
 
 import com.zephyrus.app.data.remote.AirQualityApiService
+import com.zephyrus.app.data.remote.MoonPhaseApiService
 import com.zephyrus.app.data.remote.WeatherApiService
 import com.zephyrus.app.data.remote.toCurrentWeather
 import com.zephyrus.app.data.remote.toDailyForecasts
@@ -9,7 +10,9 @@ import com.zephyrus.app.data.remote.withRetry
 import com.zephyrus.app.domain.model.CurrentWeather
 import com.zephyrus.app.domain.model.DailyForecast
 import com.zephyrus.app.domain.model.HourlyForecast
+import com.zephyrus.app.domain.model.MoonPhaseData
 import com.zephyrus.app.domain.model.TemperatureUnit
+import com.zephyrus.app.util.MoonPhaseCalculator
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -24,6 +27,7 @@ import kotlin.math.roundToLong
 class WeatherRepository @Inject constructor(
     private val weatherApi: WeatherApiService,
     private val airQualityApi: AirQualityApiService,
+    private val moonPhaseApi: MoonPhaseApiService,
 ) {
     // In-memory spatial cache for grid weather data, keyed by rounded lat/lon
     private val gridCache = ConcurrentHashMap<Long, GridPointData>()
@@ -39,6 +43,22 @@ class WeatherRepository @Inject constructor(
         val size = gridCache.size
         gridCache.clear()
         Timber.d("Grid cache cleared (%d entries)", size)
+    }
+
+    suspend fun getMoonPhase(): MoonPhaseData {
+        return try {
+            val response = withRetry(tag = "MoonPhase") {
+                moonPhaseApi.getCurrentMoonPhase()
+            }
+            MoonPhaseData(
+                phaseName = response.phase,
+                illumination = response.illumination,
+                emoji = response.emoji,
+            )
+        } catch (e: Exception) {
+            Timber.w(e, "Moon phase API failed, using local calculation")
+            MoonPhaseCalculator.toMoonPhaseData()
+        }
     }
     suspend fun getCurrentWeather(
         latitude: Double,

@@ -140,7 +140,11 @@ class CurrentViewModel @Inject constructor(
 
             weatherRepository.getCurrentWeather(latitude, longitude, unit)
                 .onSuccess { weather ->
-                    _uiState.update { it.copy(currentWeather = weather, error = null) }
+                    // Fetch moon phase separately (non-blocking for main weather)
+                    val moonPhase = weatherRepository.getMoonPhase()
+                    _uiState.update {
+                        it.copy(currentWeather = weather.copy(moonPhase = moonPhase), error = null)
+                    }
                 }
                 .onFailure { e ->
                     _uiState.update {

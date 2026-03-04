@@ -2,6 +2,7 @@ package com.zephyrus.app.di
 
 import com.zephyrus.app.data.remote.AirQualityApiService
 import com.zephyrus.app.data.remote.GeocodingApiService
+import com.zephyrus.app.data.remote.MoonPhaseApiService
 import com.zephyrus.app.data.remote.RainViewerApiService
 import com.zephyrus.app.data.remote.WeatherApiService
 import dagger.Module
@@ -87,6 +88,18 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @Named("moonphase")
+    fun provideMoonPhaseRetrofit(json: Json, client: OkHttpClient): Retrofit {
+        val contentType = "application/json".toMediaType()
+        return Retrofit.Builder()
+            .baseUrl("https://api.phaseofthemoontoday.com/")
+            .client(client)
+            .addConverterFactory(json.asConverterFactory(contentType))
+            .build()
+    }
+
+    @Provides
+    @Singleton
     fun provideWeatherApiService(@Named("weather") retrofit: Retrofit): WeatherApiService {
         return retrofit.create(WeatherApiService::class.java)
     }
@@ -107,5 +120,11 @@ object NetworkModule {
     @Singleton
     fun provideRainViewerApiService(@Named("rainviewer") retrofit: Retrofit): RainViewerApiService {
         return retrofit.create(RainViewerApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideMoonPhaseApiService(@Named("moonphase") retrofit: Retrofit): MoonPhaseApiService {
+        return retrofit.create(MoonPhaseApiService::class.java)
     }
 }
