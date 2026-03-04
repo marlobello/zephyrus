@@ -227,6 +227,8 @@ fun MapsScreen(
                         onClick = { viewModel.setActiveLayer(layer) },
                         selected = uiState.activeLayer == layer,
                         colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = MaterialTheme.colorScheme.primary,
+                            activeContentColor = MaterialTheme.colorScheme.onPrimary,
                             inactiveContainerColor = MaterialTheme.colorScheme.surface,
                             inactiveContentColor = MaterialTheme.colorScheme.onSurface,
                         ),
