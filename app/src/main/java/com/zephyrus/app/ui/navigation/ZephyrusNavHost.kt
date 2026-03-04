@@ -108,6 +108,8 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
             composable(ZephyrusScreen.Maps.route) {
                 MapsScreen(
                     locationName = activeLocationName,
+                    latitude = activeLatitude,
+                    longitude = activeLongitude,
                     onSearchClick = { navController.navigate(SEARCH_ROUTE) },
                     onSettingsClick = { navController.navigate(SETTINGS_ROUTE) },
                 )
@@ -118,6 +120,7 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
                         pendingSearchLocation = location
                         activeLatitude = location.latitude
                         activeLongitude = location.longitude
+                        activeLocationName = location.name
                         navController.popBackStack()
                     },
                     onCurrentLocationSelected = {

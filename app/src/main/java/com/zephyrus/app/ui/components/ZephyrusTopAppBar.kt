@@ -50,7 +50,7 @@ fun ZephyrusTopAppBar(
                     onDismissRequest = { menuExpanded = false },
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Search Location") },
+                        text = { Text("Location") },
                         onClick = {
                             menuExpanded = false
                             onSearchClick()

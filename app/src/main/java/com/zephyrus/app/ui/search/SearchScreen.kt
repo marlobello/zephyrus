@@ -25,11 +25,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -58,12 +58,18 @@ fun SearchScreen(
 
         // Search input
         SearchBar(
-            query = uiState.query,
-            onQueryChange = { viewModel.onQueryChanged(it) },
-            onSearch = { },
-            active = false,
-            onActiveChange = { },
-            placeholder = { Text("City, ZIP code, or airport code") },
+            inputField = {
+                SearchBarDefaults.InputField(
+                    query = uiState.query,
+                    onQueryChange = { viewModel.onQueryChanged(it) },
+                    onSearch = { },
+                    expanded = false,
+                    onExpandedChange = { },
+                    placeholder = { Text("City, ZIP code, or airport code") },
+                )
+            },
+            expanded = false,
+            onExpandedChange = { },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),

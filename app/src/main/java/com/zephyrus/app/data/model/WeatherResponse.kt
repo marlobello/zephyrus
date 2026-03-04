@@ -23,6 +23,7 @@ data class CurrentData(
     @SerialName("weather_code") val weatherCode: Int,
     @SerialName("is_day") val isDay: Int,
     @SerialName("uv_index") val uvIndex: Double = 0.0,
+    @SerialName("precipitation") val precipitation: Double = 0.0,
 )
 
 @Serializable

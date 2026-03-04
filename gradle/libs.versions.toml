@@ -16,6 +16,7 @@ coroutines = "1.10.2"
 lifecycle = "2.10.0"
 activity-compose = "1.9.0"
 core-ktx = "1.15.0"
+osmdroid = "6.1.20"
 
 [libraries]
 # Compose
@@ -68,6 +69,9 @@ coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-co
 
 # Core
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
+
+# Maps
+osmdroid = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

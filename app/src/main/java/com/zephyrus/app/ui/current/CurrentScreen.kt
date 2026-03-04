@@ -164,11 +164,15 @@ private fun WeatherContent(
     unit: TemperatureUnit,
     clockFormat: ClockFormat,
 ) {
-    val currentHour = LocalDateTime.now().hour
-    val filteredHourly = hourly.filter { forecast ->
+    val now = LocalDateTime.now()
+    val currentHour = now.hour
+    val todayDate = now.toLocalDate().toString()
+    val futureHourly = hourly.filter { forecast ->
+        val forecastDate = forecast.time.substringBefore("T")
         val forecastHour = forecast.time.substringAfter("T").take(2).toIntOrNull() ?: -1
-        forecastHour >= currentHour
+        (forecastDate == todayDate && forecastHour >= currentHour) || forecastDate > todayDate
     }
+    val filteredHourly = futureHourly.take(maxOf(8, futureHourly.size))
 
     Column(
         modifier = Modifier

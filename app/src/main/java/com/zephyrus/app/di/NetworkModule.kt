@@ -9,9 +9,11 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import timber.log.Timber
+import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -29,11 +31,19 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
+
+    @Provides
+    @Singleton
     @Named("weather")
-    fun provideWeatherRetrofit(json: Json): Retrofit {
+    fun provideWeatherRetrofit(json: Json, client: OkHttpClient): Retrofit {
         val contentType = "application/json".toMediaType()
         return Retrofit.Builder()
             .baseUrl("https://api.open-meteo.com/")
+            .client(client)
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }
@@ -41,10 +51,11 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("airQuality")
-    fun provideAirQualityRetrofit(json: Json): Retrofit {
+    fun provideAirQualityRetrofit(json: Json, client: OkHttpClient): Retrofit {
         val contentType = "application/json".toMediaType()
         return Retrofit.Builder()
             .baseUrl("https://air-quality-api.open-meteo.com/")
+            .client(client)
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }
@@ -52,10 +63,11 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("geocoding")
-    fun provideGeocodingRetrofit(json: Json): Retrofit {
+    fun provideGeocodingRetrofit(json: Json, client: OkHttpClient): Retrofit {
         val contentType = "application/json".toMediaType()
         return Retrofit.Builder()
             .baseUrl("https://geocoding-api.open-meteo.com/")
+            .client(client)
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }

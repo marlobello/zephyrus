@@ -97,4 +97,7 @@ dependencies {
 
     // Core
     implementation(libs.core.ktx)
+
+    // Maps
+    implementation(libs.osmdroid)
 }
