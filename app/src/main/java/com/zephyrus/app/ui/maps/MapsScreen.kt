@@ -3,22 +3,24 @@ package com.zephyrus.app.ui.maps
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -30,13 +32,39 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.zephyrus.app.domain.model.TemperatureUnit
 import com.zephyrus.app.ui.components.ZephyrusTopAppBar
+import com.zephyrus.app.ui.theme.HumidityDry
+import com.zephyrus.app.ui.theme.HumidityHigh
+import com.zephyrus.app.ui.theme.HumidityLow
+import com.zephyrus.app.ui.theme.HumidityMedium
+import com.zephyrus.app.ui.theme.HumiditySaturated
+import com.zephyrus.app.ui.theme.PrecipExtreme
+import com.zephyrus.app.ui.theme.PrecipHeavy
+import com.zephyrus.app.ui.theme.PrecipLight
+import com.zephyrus.app.ui.theme.PrecipModerate
+import com.zephyrus.app.ui.theme.PrecipNone
+import com.zephyrus.app.ui.theme.PressureAboveAvg
+import com.zephyrus.app.ui.theme.PressureBelowAvg
+import com.zephyrus.app.ui.theme.PressureHigh
+import com.zephyrus.app.ui.theme.PressureLow
+import com.zephyrus.app.ui.theme.PressureNormal
+import com.zephyrus.app.ui.theme.TempBlue
+import com.zephyrus.app.ui.theme.TempDeepBlue
+import com.zephyrus.app.ui.theme.TempDeepRed
+import com.zephyrus.app.ui.theme.TempLightBlue
+import com.zephyrus.app.ui.theme.TempLightRed
+import com.zephyrus.app.ui.theme.TempRed
+import com.zephyrus.app.ui.theme.TempWhite
 import com.zephyrus.app.ui.theme.humidityToArgb
 import com.zephyrus.app.ui.theme.precipitationToArgb
 import com.zephyrus.app.ui.theme.pressureToArgb
@@ -187,45 +215,37 @@ fun MapsScreen(
                 },
             )
 
-            // Layer selector dropdown
-            Box(
+            // Layer selector — segmented button row
+            SingleChoiceSegmentedButtonRow(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(12.dp),
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
-                var expanded by remember { mutableStateOf(false) }
-                AssistChip(
-                    onClick = { expanded = true },
-                    label = { Text(uiState.activeLayer.label) },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowDropDown,
-                            contentDescription = "Select layer",
-                            modifier = Modifier.size(18.dp),
-                        )
-                    },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ),
-                )
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                ) {
-                    MapLayer.entries.forEach { layer ->
-                        DropdownMenuItem(
-                            text = { Text(layer.label) },
-                            onClick = {
-                                viewModel.setActiveLayer(layer)
-                                expanded = false
-                            },
-                            leadingIcon = if (uiState.activeLayer == layer) {
-                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                            } else null,
-                        )
-                    }
+                MapLayer.entries.forEachIndexed { index, layer ->
+                    SegmentedButton(
+                        shape = SegmentedButtonDefaults.itemShape(index, MapLayer.entries.size),
+                        onClick = { viewModel.setActiveLayer(layer) },
+                        selected = uiState.activeLayer == layer,
+                        icon = {
+                            Icon(
+                                imageVector = layer.icon,
+                                contentDescription = layer.label,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        },
+                        label = { Text(layer.label, fontSize = 11.sp) },
+                    )
                 }
             }
+
+            // Color legend
+            ColorLegend(
+                layer = uiState.activeLayer,
+                unit = uiState.temperatureUnit,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+            )
 
             if (uiState.isLoading) {
                 CircularProgressIndicator(
@@ -301,5 +321,64 @@ private fun createWeatherOverlay(
     return GroundOverlay().apply {
         setImage(bitmap)
         setPosition(sw, ne)
+    }
+}
+
+@Composable
+private fun ColorLegend(
+    layer: MapLayer,
+    unit: TemperatureUnit,
+    modifier: Modifier = Modifier,
+) {
+    val (colors, startLabel, endLabel) = when (layer) {
+        MapLayer.TEMPERATURE -> {
+            val label = if (unit == TemperatureUnit.FAHRENHEIT) "°F" else "°C"
+            val low = if (unit == TemperatureUnit.FAHRENHEIT) "0" else "-18"
+            val high = if (unit == TemperatureUnit.FAHRENHEIT) "105" else "41"
+            Triple(
+                listOf(TempDeepBlue, TempBlue, TempLightBlue, TempWhite, TempLightRed, TempRed, TempDeepRed),
+                "$low$label",
+                "$high$label",
+            )
+        }
+        MapLayer.HUMIDITY -> Triple(
+            listOf(HumidityDry, HumidityLow, HumidityMedium, HumidityHigh, HumiditySaturated),
+            "0%",
+            "100%",
+        )
+        MapLayer.PRESSURE -> Triple(
+            listOf(PressureLow, PressureBelowAvg, PressureNormal, PressureAboveAvg, PressureHigh),
+            "980",
+            "1040 hPa",
+        )
+        MapLayer.PRECIPITATION -> Triple(
+            listOf(PrecipNone, PrecipLight, PrecipModerate, PrecipHeavy, PrecipExtreme),
+            "0",
+            "0.5+ in/h",
+        )
+    }
+
+    Column(
+        modifier = modifier
+            .background(
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                shape = RoundedCornerShape(8.dp),
+            )
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Brush.horizontalGradient(colors)),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(startLabel, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface)
+            Text(endLabel, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface)
+        }
     }
 }
