@@ -378,19 +378,26 @@ private fun MoonPhaseCard(moonPhase: MoonPhaseData?, modifier: Modifier = Modifi
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = moonPhase?.emoji ?: "🌑",
-                fontSize = 28.sp,
-            )
-            Text(
-                text = "${moonPhase?.illumination?.toInt() ?: 0}%",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = moonPhase?.phaseName ?: "Unknown",
-                style = MaterialTheme.typography.bodySmall,
-            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = moonPhase?.emoji ?: "🌑",
+                    fontSize = 18.sp,
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "${moonPhase?.illumination?.toInt() ?: 0}%",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = moonPhase?.phaseName ?: "Unknown",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
     }
 }
