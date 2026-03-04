@@ -16,7 +16,8 @@ fun WeatherResponse.toCurrentWeather(airQuality: AirQualityResponse?): CurrentWe
     val c = current ?: return null
     val todaySunrise = daily?.sunrise?.firstOrNull() ?: ""
     val todaySunset = daily?.sunset?.firstOrNull() ?: ""
-    return c.toCurrentWeather(airQuality?.current, todaySunrise, todaySunset, timezone)
+    val todayMoonPhase = daily?.moonPhase?.firstOrNull() ?: 0.0
+    return c.toCurrentWeather(airQuality?.current, todaySunrise, todaySunset, timezone, todayMoonPhase)
 }
 
 fun CurrentData.toCurrentWeather(
@@ -24,6 +25,7 @@ fun CurrentData.toCurrentWeather(
     sunrise: String = "",
     sunset: String = "",
     timezone: String = "UTC",
+    moonPhase: Double = 0.0,
 ): CurrentWeather {
     return CurrentWeather(
         temperature = temperature,
@@ -39,6 +41,7 @@ fun CurrentData.toCurrentWeather(
         sunrise = sunrise,
         sunset = sunset,
         timezone = timezone,
+        moonPhase = moonPhase,
     )
 }
 

@@ -14,6 +14,7 @@ data class CurrentWeather(
     val sunrise: String = "",
     val sunset: String = "",
     val timezone: String = "UTC",
+    val moonPhase: Double = 0.0,
 )
 
 data class PollenData(
