@@ -61,6 +61,7 @@ fun ForecastScreen(
     locationName: String = "Zephyrus",
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onAboutClick: () -> Unit = {},
     viewModel: ForecastViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -78,6 +79,7 @@ fun ForecastScreen(
             onRefreshClick = { viewModel.loadForecast(latitude, longitude) },
             onSearchClick = onSearchClick,
             onSettingsClick = onSettingsClick,
+            onAboutClick = onAboutClick,
         )
 
         when {

@@ -27,6 +27,7 @@ fun ZephyrusTopAppBar(
     onRefreshClick: () -> Unit,
     onSearchClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onAboutClick: () -> Unit = {},
 ) {
     TopAppBar(
         title = {
@@ -68,6 +69,13 @@ fun ZephyrusTopAppBar(
                         onClick = {
                             menuExpanded = false
                             onSettingsClick()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("About") },
+                        onClick = {
+                            menuExpanded = false
+                            onAboutClick()
                         },
                     )
                 }

@@ -51,6 +51,7 @@ import java.time.LocalDateTime
 fun CurrentScreen(
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onAboutClick: () -> Unit = {},
     onLocationResolved: (Double, Double, String) -> Unit = { _, _, _ -> },
     pendingSearchLocation: Location? = null,
     onSearchLocationConsumed: () -> Unit = {},
@@ -110,6 +111,7 @@ fun CurrentScreen(
             onRefreshClick = { viewModel.refresh() },
             onSearchClick = onSearchClick,
             onSettingsClick = onSettingsClick,
+            onAboutClick = onAboutClick,
         )
 
         when {

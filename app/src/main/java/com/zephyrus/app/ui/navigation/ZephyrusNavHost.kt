@@ -20,6 +20,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.zephyrus.app.domain.model.Location
+import com.zephyrus.app.ui.about.AboutScreen
 import com.zephyrus.app.ui.current.CurrentScreen
 import com.zephyrus.app.ui.forecast.ForecastScreen
 import com.zephyrus.app.ui.maps.MapsScreen
@@ -29,6 +30,7 @@ import timber.log.Timber
 
 private const val SEARCH_ROUTE = "search"
 private const val SETTINGS_ROUTE = "settings"
+private const val ABOUT_ROUTE = "about"
 
 @Composable
 fun ZephyrusNavHost(modifier: Modifier = Modifier) {
@@ -85,6 +87,9 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
                     onSettingsClick = {
                         navController.navigate(SETTINGS_ROUTE)
                     },
+                    onAboutClick = {
+                        navController.navigate(ABOUT_ROUTE)
+                    },
                     onLocationResolved = { lat, lon, name ->
                         activeLatitude = lat
                         activeLongitude = lon
@@ -103,6 +108,7 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
                     locationName = activeLocationName,
                     onSearchClick = { navController.navigate(SEARCH_ROUTE) },
                     onSettingsClick = { navController.navigate(SETTINGS_ROUTE) },
+                    onAboutClick = { navController.navigate(ABOUT_ROUTE) },
                 )
             }
             composable(ZephyrusScreen.Maps.route) {
@@ -112,6 +118,7 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
                     longitude = activeLongitude,
                     onSearchClick = { navController.navigate(SEARCH_ROUTE) },
                     onSettingsClick = { navController.navigate(SETTINGS_ROUTE) },
+                    onAboutClick = { navController.navigate(ABOUT_ROUTE) },
                 )
             }
             composable(SEARCH_ROUTE) {
@@ -132,6 +139,11 @@ fun ZephyrusNavHost(modifier: Modifier = Modifier) {
             }
             composable(SETTINGS_ROUTE) {
                 SettingsScreen(
+                    onDismiss = { navController.popBackStack() },
+                )
+            }
+            composable(ABOUT_ROUTE) {
+                AboutScreen(
                     onDismiss = { navController.popBackStack() },
                 )
             }

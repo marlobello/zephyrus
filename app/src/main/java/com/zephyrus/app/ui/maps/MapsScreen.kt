@@ -88,6 +88,7 @@ fun MapsScreen(
     longitude: Double = 0.0,
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onAboutClick: () -> Unit = {},
     viewModel: MapsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -106,6 +107,7 @@ fun MapsScreen(
             onRefreshClick = { viewModel.refresh() },
             onSearchClick = onSearchClick,
             onSettingsClick = onSettingsClick,
+            onAboutClick = onAboutClick,
         )
 
         Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
