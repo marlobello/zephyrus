@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zephyrus.app.data.local.UserPreferences
 import com.zephyrus.app.data.remote.RainViewerApiService
+import com.zephyrus.app.data.remote.withRetry
 import com.zephyrus.app.data.repository.WeatherRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +34,12 @@ class MapsViewModel @Inject constructor(
     private var lastFetchLat = 0.0
     private var lastFetchLon = 0.0
     private var lastFetchZoom = 0.0
+    private var lastRadarFetchTime = 0L
+
+    companion object {
+        private const val RADAR_CACHE_TTL_MS = 5 * 60 * 1000L // 5 minutes
+        private const val RADAR_REFRESH_INTERVAL_MS = 10 * 60 * 1000L // 10 minutes
+    }
 
     init {
         viewModelScope.launch {
@@ -40,18 +48,38 @@ class MapsViewModel @Inject constructor(
             }
         }
         fetchRadarTimestamp()
+        startRadarAutoRefresh()
     }
 
-    private fun fetchRadarTimestamp() {
+    private fun startRadarAutoRefresh() {
+        viewModelScope.launch {
+            while (true) {
+                delay(RADAR_REFRESH_INTERVAL_MS)
+                Timber.d("Auto-refreshing radar timestamp")
+                fetchRadarTimestamp(force = true)
+            }
+        }
+    }
+
+    private fun fetchRadarTimestamp(force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && lastRadarFetchTime > 0 && (now - lastRadarFetchTime) < RADAR_CACHE_TTL_MS) {
+            Timber.d("Radar metadata still fresh, skipping fetch")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                val response = rainViewerApi.getWeatherMaps()
+                val response = withRetry(tag = "RainViewer") {
+                    rainViewerApi.getWeatherMaps()
+                }
                 val latestFrame = response.radar.past.lastOrNull()
                 if (latestFrame != null) {
                     Timber.d("RainViewer radar path: %s%s", response.host, latestFrame.path)
                     _uiState.update {
                         it.copy(radarHost = response.host, radarTilePath = latestFrame.path)
                     }
+                    lastRadarFetchTime = System.currentTimeMillis()
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Failed to fetch RainViewer radar timestamp")
@@ -141,7 +169,7 @@ class MapsViewModel @Inject constructor(
 
     fun refresh() {
         weatherRepository.clearGridCache()
-        fetchRadarTimestamp()
+        fetchRadarTimestamp(force = true)
         val prevZoom = lastFetchZoom
         lastFetchZoom = 0.0 // Force re-fetch
         val state = _uiState.value

@@ -184,8 +184,9 @@ fun MapsScreen(
                 }
             }
 
-            // Track radar overlay outside update block
+            // Track radar overlay and its path to detect when tiles need rebuilding
             var radarOverlayRef: TilesOverlay? by remember { mutableStateOf(null) }
+            var radarOverlayPath: String by remember { mutableStateOf("") }
 
             AndroidView(
                 factory = { mapView },
@@ -199,30 +200,41 @@ fun MapsScreen(
                         val path = uiState.radarTilePath
                         val host = uiState.radarHost
 
-                        if (path.isNotEmpty() && host.isNotEmpty() && radarOverlayRef == null) {
-                            val radarSource = object : OnlineTileSourceBase(
-                                "RainViewer", 0, 7, 256, ".png",
-                                arrayOf(host),
-                            ) {
-                                override fun getTileURLString(pMapTileIndex: Long): String {
-                                    val z = MapTileIndex.getZoom(pMapTileIndex)
-                                    val x = MapTileIndex.getX(pMapTileIndex)
-                                    val y = MapTileIndex.getY(pMapTileIndex)
-                                    return "$host$path/256/$z/$x/$y/0/1_0.png"
-                                }
+                        if (path.isNotEmpty() && host.isNotEmpty()) {
+                            // Recreate overlay only if the radar path changed (new frame)
+                            if (radarOverlayRef != null && radarOverlayPath != path) {
+                                map.overlays.remove(radarOverlayRef)
+                                radarOverlayRef = null
                             }
-                            val tileProvider = MapTileProviderBasic(context, radarSource)
-                            val overlay = TilesOverlay(tileProvider, context)
-                            overlay.loadingBackgroundColor = android.graphics.Color.TRANSPARENT
-                            overlay.loadingLineColor = android.graphics.Color.TRANSPARENT
-                            map.overlays.add(overlay)
-                            radarOverlayRef = overlay
+
+                            if (radarOverlayRef == null) {
+                                val radarSource = object : OnlineTileSourceBase(
+                                    "RainViewer", 0, 7, 256, ".png",
+                                    arrayOf(host),
+                                ) {
+                                    override fun getTileURLString(pMapTileIndex: Long): String {
+                                        val z = MapTileIndex.getZoom(pMapTileIndex)
+                                        val x = MapTileIndex.getX(pMapTileIndex)
+                                        val y = MapTileIndex.getY(pMapTileIndex)
+                                        return "$host$path/256/$z/$x/$y/0/1_0.png"
+                                    }
+                                }
+                                val tileProvider = MapTileProviderBasic(context, radarSource)
+                                val overlay = TilesOverlay(tileProvider, context)
+                                overlay.loadingBackgroundColor = android.graphics.Color.TRANSPARENT
+                                overlay.loadingLineColor = android.graphics.Color.TRANSPARENT
+                                map.overlays.add(overlay)
+                                radarOverlayRef = overlay
+                                radarOverlayPath = path
+                            } else if (!map.overlays.contains(radarOverlayRef)) {
+                                // Re-add existing overlay (was removed when switching layers)
+                                map.overlays.add(radarOverlayRef)
+                            }
                         }
                         map.invalidate()
                     } else {
-                        // Remove radar tile overlay if present
+                        // Hide radar tile overlay (keep reference for reuse)
                         radarOverlayRef?.let { map.overlays.remove(it) }
-                        radarOverlayRef = null
 
                         val grid = when (uiState.activeLayer) {
                             MapLayer.TEMPERATURE -> uiState.gridTemperatures
