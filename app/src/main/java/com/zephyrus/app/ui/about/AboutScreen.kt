@@ -1,7 +1,6 @@
 package com.zephyrus.app.ui.about
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.zephyrus.app.R
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,13 +71,13 @@ fun AboutScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             TextButton(onClick = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/marlobello/zephyrus")))
+                context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/marlobello/zephyrus".toUri()))
             }) {
                 Text("Source Code on GitHub")
             }
 
             TextButton(onClick = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/marlobello/zephyrus/blob/main/LICENSE")))
+                context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/marlobello/zephyrus/blob/main/LICENSE".toUri()))
             }) {
                 Text("MIT License")
             }
@@ -94,15 +94,10 @@ fun AboutScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             TextButton(onClick = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://open-meteo.com/")))
+                context.startActivity(Intent(Intent.ACTION_VIEW, "https://open-meteo.com/".toUri()))
             }) {
                 Text("open-meteo.com")
             }
-            Text(
-                text = "Free weather API — no API key required.\nData sourced from national weather services.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -116,7 +111,7 @@ fun AboutScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             TextButton(onClick = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright")))
+                context.startActivity(Intent(Intent.ACTION_VIEW, "https://www.openstreetmap.org/copyright".toUri()))
             }) {
                 Text("openstreetmap.org")
             }
