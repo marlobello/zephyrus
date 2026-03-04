@@ -57,8 +57,6 @@ fun CurrentScreen(
     onSettingsClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
     onLocationResolved: (Double, Double, String) -> Unit = { _, _, _ -> },
-    pendingUseDeviceLocation: Boolean = false,
-    onDeviceLocationConsumed: () -> Unit = {},
     viewModel: CurrentViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -94,17 +92,6 @@ fun CurrentScreen(
     LaunchedEffect(latitude, longitude) {
         if (latitude != 0.0 || longitude != 0.0) {
             viewModel.loadWeatherAt(latitude, longitude)
-        }
-    }
-
-    // Handle "Current Location" selected from search
-    LaunchedEffect(pendingUseDeviceLocation) {
-        if (pendingUseDeviceLocation) {
-            viewModel.resolveDeviceLocation { location ->
-                val displayName = if (location.admin1.isNotEmpty()) "${location.name}, ${location.admin1}" else location.name
-                onLocationResolved(location.latitude, location.longitude, displayName)
-            }
-            onDeviceLocationConsumed()
         }
     }
 
