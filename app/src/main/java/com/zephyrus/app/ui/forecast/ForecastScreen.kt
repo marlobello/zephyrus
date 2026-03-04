@@ -211,7 +211,7 @@ private fun DailyForecastCard(
                 Text(
                     text = formatForecastDate(day.date),
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.width(100.dp),
+                    modifier = Modifier.width(84.dp),
                 )
 
                 Icon(
