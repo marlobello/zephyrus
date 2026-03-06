@@ -143,12 +143,18 @@ fun MapsScreen(
                 }
             }
 
+            // Track radar overlay, its tile provider, and path to detect when tiles need rebuilding
+            var radarOverlayRef: TilesOverlay? by remember { mutableStateOf(null) }
+            var radarProviderRef: MapTileProviderBasic? by remember { mutableStateOf(null) }
+            var radarOverlayPath: String by remember { mutableStateOf("") }
+
             // MapView lifecycle management
             DisposableEffect(mapView) {
                 mapView.onResume()
                 onDispose {
                     // Recycle any remaining overlay bitmaps
                     mapView.overlays.filterIsInstance<GroundOverlay>().forEach { it.image?.recycle() }
+                    radarProviderRef?.detach()
                     mapView.onPause()
                     mapView.onDetach()
                 }
@@ -184,10 +190,6 @@ fun MapsScreen(
                 }
             }
 
-            // Track radar overlay and its path to detect when tiles need rebuilding
-            var radarOverlayRef: TilesOverlay? by remember { mutableStateOf(null) }
-            var radarOverlayPath: String by remember { mutableStateOf("") }
-
             AndroidView(
                 factory = { mapView },
                 modifier = Modifier.fillMaxSize(),
@@ -201,15 +203,20 @@ fun MapsScreen(
                         val host = uiState.radarHost
 
                         if (path.isNotEmpty() && host.isNotEmpty()) {
-                            // Recreate overlay only if the radar path changed (new frame)
+                            // Recreate overlay when the radar path changes (new frame).
+                            // Each frame gets a unique tile source name so osmdroid's
+                            // disk cache doesn't serve stale tiles from the old frame.
                             if (radarOverlayRef != null && radarOverlayPath != path) {
                                 map.overlays.remove(radarOverlayRef)
+                                radarProviderRef?.detach()
                                 radarOverlayRef = null
+                                radarProviderRef = null
                             }
 
                             if (radarOverlayRef == null) {
+                                val frameName = "RainViewer-${path.hashCode()}"
                                 val radarSource = object : OnlineTileSourceBase(
-                                    "RainViewer", 0, 7, 256, ".png",
+                                    frameName, 0, 7, 256, ".png",
                                     arrayOf(host),
                                 ) {
                                     override fun getTileURLString(pMapTileIndex: Long): String {
@@ -225,6 +232,7 @@ fun MapsScreen(
                                 overlay.loadingLineColor = android.graphics.Color.TRANSPARENT
                                 map.overlays.add(overlay)
                                 radarOverlayRef = overlay
+                                radarProviderRef = tileProvider
                                 radarOverlayPath = path
                             } else if (!map.overlays.contains(radarOverlayRef)) {
                                 // Re-add existing overlay (was removed when switching layers)

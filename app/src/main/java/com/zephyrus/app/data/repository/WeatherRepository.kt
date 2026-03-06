@@ -36,7 +36,16 @@ class WeatherRepository @Inject constructor(
     private val moonPhaseApi: MoonPhaseApiService,
 ) {
     // In-memory spatial cache for grid weather data, keyed by rounded lat/lon
-    private val gridCache = ConcurrentHashMap<Long, GridPointData>()
+    private val gridCache = ConcurrentHashMap<Long, CachedGridPoint>()
+
+    private data class CachedGridPoint(
+        val data: GridPointData,
+        val fetchedAt: Long = System.currentTimeMillis(),
+    )
+
+    companion object {
+        private const val GRID_CACHE_TTL_MS = 15 * 60 * 1000L // 15 minutes
+    }
 
     /** Rounds lat/lon to 0.05° precision and packs into a single Long key. */
     private fun cacheKey(lat: Double, lon: Double): Long {
@@ -274,8 +283,9 @@ class WeatherRepository @Inject constructor(
                 val lon = startLon + col * lonStep
                 val key = cacheKey(lat, lon)
                 val hit = gridCache[key]
-                if (hit != null) {
-                    cached.add(Triple(row, col, hit))
+                val now = System.currentTimeMillis()
+                if (hit != null && (now - hit.fetchedAt) < GRID_CACHE_TTL_MS) {
+                    cached.add(Triple(row, col, hit.data))
                 } else {
                     uncached.add(GridRequest(row, col, lat, lon, key))
                 }
@@ -305,7 +315,7 @@ class WeatherRepository @Inject constructor(
                                         pressure = resp.current?.surfacePressure ?: 0.0,
                                         precipitation = resp.current?.precipitation ?: 0.0,
                                     )
-                                    gridCache[req.key] = data
+                                    gridCache[req.key] = CachedGridPoint(data)
                                     data
                                 }
                             } catch (e: Exception) {
