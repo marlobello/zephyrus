@@ -26,6 +26,7 @@ import com.zephyrus.app.ui.forecast.ForecastScreen
 import com.zephyrus.app.ui.maps.MapsScreen
 import com.zephyrus.app.ui.search.SearchScreen
 import com.zephyrus.app.ui.settings.SettingsScreen
+import com.zephyrus.app.ui.update.UpdateViewModel
 import timber.log.Timber
 
 private const val SEARCH_ROUTE = "search"
@@ -36,6 +37,7 @@ private const val ABOUT_ROUTE = "about"
 fun ZephyrusNavHost(
     modifier: Modifier = Modifier,
     navigationViewModel: NavigationViewModel = hiltViewModel(),
+    updateViewModel: UpdateViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
     val screens = ZephyrusScreen.entries
@@ -88,6 +90,7 @@ fun ZephyrusNavHost(
                     latitude = activeLatitude,
                     longitude = activeLongitude,
                     locationName = activeLocationName,
+                    updateViewModel = updateViewModel,
                     onSearchClick = {
                         navController.navigate(SEARCH_ROUTE)
                     },
@@ -162,6 +165,7 @@ fun ZephyrusNavHost(
             composable(ABOUT_ROUTE) {
                 AboutScreen(
                     onDismiss = { navController.popBackStack() },
+                    updateViewModel = updateViewModel,
                 )
             }
         }
