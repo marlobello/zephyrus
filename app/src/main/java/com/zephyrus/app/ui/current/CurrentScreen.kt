@@ -50,6 +50,8 @@ import com.zephyrus.app.ui.components.SunArcCard
 import com.zephyrus.app.ui.components.ZephyrusTopAppBar
 import com.zephyrus.app.ui.components.PressureGlyph
 import com.zephyrus.app.ui.components.UvIndexGlyph
+import com.zephyrus.app.ui.update.UpdateUiState
+import com.zephyrus.app.ui.update.UpdateViewModel
 import com.zephyrus.app.util.WeatherIcons
 import java.time.LocalDateTime
 
@@ -59,6 +61,7 @@ fun CurrentScreen(
     latitude: Double = 0.0,
     longitude: Double = 0.0,
     locationName: String = "Zephyrus",
+    updateViewModel: UpdateViewModel? = null,
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
@@ -66,6 +69,7 @@ fun CurrentScreen(
     viewModel: CurrentViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val updateState = updateViewModel?.uiState?.collectAsStateWithLifecycle()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -124,6 +128,15 @@ fun CurrentScreen(
                         ErrorBanner(
                             message = uiState.error!!,
                             onRetry = { viewModel.retry() },
+                        )
+                    }
+                    // Show update available banner
+                    val currentUpdateState = updateState?.value
+                    if (currentUpdateState is UpdateUiState.UpdateAvailable) {
+                        UpdateBanner(
+                            version = currentUpdateState.info.version,
+                            onUpdate = { updateViewModel!!.downloadAndInstall(currentUpdateState.info.apkUrl) },
+                            onDismiss = { updateViewModel!!.dismiss() },
                         )
                     }
                     if (uiState.currentWeather != null) {
@@ -187,6 +200,31 @@ private fun ErrorBanner(message: String, onRetry: () -> Unit) {
         )
         TextButton(onClick = onRetry) {
             Text("Retry", color = MaterialTheme.colorScheme.onErrorContainer)
+        }
+    }
+}
+
+@Composable
+private fun UpdateBanner(version: String, onUpdate: () -> Unit, onDismiss: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "v$version available",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onUpdate) {
+            Text("Update", color = MaterialTheme.colorScheme.onPrimaryContainer)
+        }
+        TextButton(onClick = onDismiss) {
+            Text("Dismiss", color = MaterialTheme.colorScheme.onPrimaryContainer)
         }
     }
 }

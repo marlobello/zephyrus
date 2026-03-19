@@ -2,6 +2,7 @@ package com.zephyrus.app.di
 
 import com.zephyrus.app.data.remote.AirQualityApiService
 import com.zephyrus.app.data.remote.GeocodingApiService
+import com.zephyrus.app.data.remote.GitHubApiService
 import com.zephyrus.app.data.remote.MoonPhaseApiService
 import com.zephyrus.app.data.remote.RainViewerApiService
 import com.zephyrus.app.data.remote.WeatherApiService
@@ -126,5 +127,23 @@ object NetworkModule {
     @Singleton
     fun provideMoonPhaseApiService(@Named("moonphase") retrofit: Retrofit): MoonPhaseApiService {
         return retrofit.create(MoonPhaseApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("github")
+    fun provideGitHubRetrofit(json: Json, client: OkHttpClient): Retrofit {
+        val contentType = "application/json".toMediaType()
+        return Retrofit.Builder()
+            .baseUrl("https://api.github.com/")
+            .client(client)
+            .addConverterFactory(json.asConverterFactory(contentType))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideGitHubApiService(@Named("github") retrofit: Retrofit): GitHubApiService {
+        return retrofit.create(GitHubApiService::class.java)
     }
 }
