@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Opacity
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,6 +48,8 @@ import com.zephyrus.app.domain.model.TemperatureUnit
 import com.zephyrus.app.ui.components.HourlyForecastRow
 import com.zephyrus.app.ui.components.SunArcCard
 import com.zephyrus.app.ui.components.ZephyrusTopAppBar
+import com.zephyrus.app.ui.components.PressureGlyph
+import com.zephyrus.app.ui.components.UvIndexGlyph
 import com.zephyrus.app.util.WeatherIcons
 import java.time.LocalDateTime
 
@@ -215,26 +218,33 @@ private fun WeatherContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Main temperature and condition
-        Icon(
-            imageVector = WeatherIcons.forCondition(weather.condition, weather.isDay),
-            contentDescription = weather.condition.description,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            text = "${weather.temperature.toInt()}${unit.label()}",
-            style = MaterialTheme.typography.displayLarge,
-        )
-        Text(
-            text = weather.condition.description,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = "Feels like ${weather.feelsLike.toInt()}${unit.label()}",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = WeatherIcons.forCondition(weather.condition, weather.isDay),
+                contentDescription = weather.condition.description,
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "${weather.temperature.toInt()}${unit.label()}",
+                    style = MaterialTheme.typography.headlineLarge,
+                )
+                Text(
+                    text = weather.condition.description,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "Feels like ${weather.feelsLike.toInt()}${unit.label()}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -248,18 +258,15 @@ private fun WeatherContent(
                 direction = weather.windDirection,
                 modifier = Modifier.weight(1f),
             )
-            DetailCard("Humidity", "${weather.humidity}%", Modifier.weight(1f))
+            HumidityCard(humidity = weather.humidity, modifier = Modifier.weight(1f))
         }
         Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            DetailCard("Pressure", "${weather.pressure.toInt()} hPa", Modifier.weight(1f))
-            MoonPhaseCard(
-                moonPhase = weather.moonPhase,
-                modifier = Modifier.weight(1f),
-            )
+            PressureCard(pressure = weather.pressure, modifier = Modifier.weight(1f))
+            UvIndexCard(uvIndex = weather.uvIndex, modifier = Modifier.weight(1f))
         }
         Spacer(modifier = Modifier.height(8.dp))
         Row(
@@ -271,7 +278,10 @@ private fun WeatherContent(
                 weather.pollen?.overallLevel() ?: "N/A",
                 Modifier.weight(1f),
             )
-            DetailCard("UV Index", "%.1f".format(weather.uvIndex), Modifier.weight(1f))
+            MoonPhaseCard(
+                moonPhase = weather.moonPhase,
+                modifier = Modifier.weight(1f),
+            )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -320,6 +330,91 @@ private fun DetailCard(label: String, value: String, modifier: Modifier = Modifi
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = value,
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HumidityCard(humidity: Int, modifier: Modifier = Modifier) {
+    Card(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "Humidity",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Opacity,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "${humidity}%",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PressureCard(pressure: Double, modifier: Modifier = Modifier) {
+    Card(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "Pressure",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            PressureGlyph(pressure = pressure)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "${pressure.toInt()} hPa",
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun UvIndexCard(uvIndex: Double, modifier: Modifier = Modifier) {
+    Card(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "UV Index",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            UvIndexGlyph(uvIndex = uvIndex)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "%.1f".format(uvIndex),
                 style = MaterialTheme.typography.titleMedium,
             )
         }
